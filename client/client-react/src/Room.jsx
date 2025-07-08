@@ -63,6 +63,8 @@ export default function Room() {
   const [localStream, setLocalStream] = useState(null);
   const [users, setUsers] = useState([]);
   const peerConnections = useRef({});
+  // Dodaję referencję do socket, aby zawsze mieć aktualny obiekt
+  const socketRef = useRef(null);
 
   // Socket.IO init
   useEffect(() => {
@@ -78,6 +80,7 @@ export default function Room() {
       withCredentials: false
     });
     setSocket(s);
+    socketRef.current = s;
     s.emit('join-room', { roomId, userName });
 
     // Powiadomienie o nowym użytkowniku
@@ -141,6 +144,7 @@ export default function Room() {
   // WebRTC functions
   const createPeerConnection = async (userId) => {
     try {
+      const socketInstance = socketRef.current;
       const pc = new RTCPeerConnection({
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
@@ -157,8 +161,8 @@ export default function Room() {
 
       // Handle ICE candidates
       pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          socket.emit('ice-candidate', { roomId, to: userId, candidate: event.candidate });
+        if (event.candidate && socketInstance) {
+          socketInstance.emit('ice-candidate', { roomId, to: userId, candidate: event.candidate });
         }
       };
 
@@ -184,7 +188,9 @@ export default function Room() {
       // Create and send offer
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      socket.emit('offer', { roomId, to: userId, offer });
+      if (socketInstance) {
+        socketInstance.emit('offer', { roomId, to: userId, offer });
+      }
 
       // Timeout dla połączenia
       setTimeout(() => {
@@ -201,6 +207,7 @@ export default function Room() {
 
   const handleOffer = async (from, offer) => {
     try {
+      const socketInstance = socketRef.current;
       let pc = peerConnections.current[from];
       if (!pc) {
         pc = new RTCPeerConnection({
@@ -217,8 +224,8 @@ export default function Room() {
         }
         // Handle ICE candidates
         pc.onicecandidate = (event) => {
-          if (event.candidate) {
-            socket.emit('ice-candidate', { roomId, to: from, candidate: event.candidate });
+          if (event.candidate && socketInstance) {
+            socketInstance.emit('ice-candidate', { roomId, to: from, candidate: event.candidate });
           }
         };
         // Handle remote stream
@@ -241,7 +248,9 @@ export default function Room() {
       await pc.setRemoteDescription(offer);
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      socket.emit('answer', { roomId, to: from, answer });
+      if (socketInstance) {
+        socketInstance.emit('answer', { roomId, to: from, answer });
+      }
       console.log('Sent answer to', from);
     } catch (error) {
       console.error('Error handling offer:', error);
