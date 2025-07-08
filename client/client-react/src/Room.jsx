@@ -1114,18 +1114,20 @@ export default function Room() {
               </Typography>
               <Divider sx={{ mb: 2, bgcolor: 'primary.main', opacity: 0.2 }} />
               <Box sx={{ flex: 1, overflowY: 'auto', mb: 2, ...bitcountFont }}>
-                {messages.map((msg, i) => (
-                  msg.type === 'system' ? (
-                    <Box key={i} sx={{ mb: 1, textAlign: 'center', color: 'primary.light', fontStyle: 'italic', fontWeight: 600, ...bitcountFont }}>
-                      {msg.message}
-                    </Box>
-                  ) : (
-                    <Box key={i} sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1, ...bitcountFont }}>
-                      <Avatar sx={{ width: 28, height: 28, bgcolor: 'primary.main', fontWeight: 700, ...bitcountFont }}>{msg.userName[0]}</Avatar>
-                      <Paper sx={{ p: 1, bgcolor: 'background.paper', borderRadius: 2, ...bitcountFont }}><b>{msg.userName}:</b> {msg.message}</Paper>
-                    </Box>
-                  )
-                ))}
+                {messages && messages
+                  .filter(msg => msg && typeof msg === 'object' && msg.message)
+                  .map((msg, i) => (
+                    msg.type === 'system' ? (
+                      <Box key={i} sx={{ mb: 1, textAlign: 'center', color: 'primary.light', fontStyle: 'italic', fontWeight: 600, ...bitcountFont }}>
+                        {msg.message}
+                      </Box>
+                    ) : (
+                      <Box key={i} sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1, ...bitcountFont }}>
+                        <Avatar sx={{ width: 28, height: 28, bgcolor: 'primary.main', fontWeight: 700, ...bitcountFont }}>{msg.userName ? msg.userName[0] : '?'}</Avatar>
+                        <Paper sx={{ p: 1, bgcolor: 'background.paper', borderRadius: 2, ...bitcountFont }}><b>{msg.userName ? msg.userName : 'Gość'}:</b> {msg.message}</Paper>
+                      </Box>
+                    )
+                  ))}
               </Box>
               <Box sx={{ display: 'flex', gap: 1, ...bitcountFont }}>
                 <TextField
