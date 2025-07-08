@@ -404,16 +404,12 @@ export default function Room() {
       }
 
       const constraints = {
-        video: cameraOn ? {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: 'user'
-        } : false,
-        audio: micOn ? {
+        video: true,
+        audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true
-        } : false
+        }
       };
 
       console.log('Requesting media with constraints:', constraints);
