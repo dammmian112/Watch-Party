@@ -23,6 +23,24 @@ const bitcountFont = {
   fontVariationSettings: '"slnt" 0, "CRSV" 0.5, "ELSH" 0, "ELXP" 0',
 };
 
+// Komponent do poprawnego przypisywania srcObject do <video>
+function PeerVideo({ stream }) {
+  const videoRef = useRef(null);
+  useEffect(() => {
+    if (videoRef.current && stream instanceof MediaStream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
+  return (
+    <video
+      ref={videoRef}
+      autoPlay
+      playsInline
+      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+    />
+  );
+}
+
 export default function Room() {
   const { roomId } = useParams();
   const [searchParams] = useSearchParams();
