@@ -841,7 +841,14 @@ export default function Room() {
       }]);
 
       // Sprawdź uprawnienia
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: true, 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
       stream.getTracks().forEach(track => track.stop());
       
       setMessages(prev => [...prev, { 
