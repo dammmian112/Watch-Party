@@ -291,12 +291,16 @@ export default function Room() {
   const handleAnswer = async (from, answer) => {
     try {
       const pc = peerConnections.current[from];
-      if (pc) {
+      if (pc && pc.signalingState !== 'closed') {
         await pc.setRemoteDescription(answer);
         // Dodaj zakolejkowane candidates
         if (pendingCandidates.current[from]) {
           for (const c of pendingCandidates.current[from]) {
-            await pc.addIceCandidate(c);
+            try {
+              await pc.addIceCandidate(c);
+            } catch (err) {
+              console.error('Error adding ICE candidate from queue:', err, c);
+            }
           }
           pendingCandidates.current[from] = [];
         }
@@ -309,9 +313,13 @@ export default function Room() {
   const handleIceCandidate = async (from, candidate) => {
     try {
       const pc = peerConnections.current[from];
-      if (pc) {
+      if (pc && pc.signalingState !== 'closed') {
         if (pc.remoteDescription && pc.remoteDescription.type) {
-          await pc.addIceCandidate(candidate);
+          try {
+            await pc.addIceCandidate(candidate);
+          } catch (err) {
+            console.error('Error adding ICE candidate:', err, candidate);
+          }
         } else {
           // Kolejkuj candidate
           if (!pendingCandidates.current[from]) pendingCandidates.current[from] = [];
@@ -837,10 +845,7 @@ export default function Room() {
     const myId = socket?.id || socketRef.current?.id;
     if (users.length > 0 && socket) {
       users.forEach(user => {
-        if (user.id !== myId) {
-          if (peerConnections.current[user.id]) {
-            closePeerConnection(user.id);
-          }
+        if (user.id !== myId && !peerConnections.current[user.id]) {
           console.log('Creating peer connection to', user.id, 'myId:', myId);
           createPeerConnection(user.id);
         }
