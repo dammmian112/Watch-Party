@@ -147,6 +147,10 @@ export default function Room() {
   const createPeerConnection = async (userId) => {
     try {
       const socketInstance = socketRef.current;
+      if (peerConnections.current[userId]) {
+        closePeerConnection(userId);
+      }
+      console.log('createPeerConnection called for', userId, 'myId:', socketInstance?.id);
       const pc = new RTCPeerConnection({
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
@@ -798,9 +802,14 @@ export default function Room() {
 
   // Poprawiony useEffect na users:
   useEffect(() => {
+    const myId = socket?.id || socketRef.current?.id;
     if (users.length > 0 && socket) {
       users.forEach(user => {
-        if (user.id !== socket.id && !peerConnections.current[user.id]) {
+        if (user.id !== myId) {
+          if (peerConnections.current[user.id]) {
+            closePeerConnection(user.id);
+          }
+          console.log('Creating peer connection to', user.id, 'myId:', myId);
           createPeerConnection(user.id);
         }
       });
