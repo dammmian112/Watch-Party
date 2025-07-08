@@ -1095,6 +1095,59 @@ export default function Room() {
                 </Box>
               </Box>
             )}
+            {/* KAMERKI WSZYSTKICH */}
+<Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', mt: 2, p: 2, bgcolor: 'rgba(35,40,58,0.3)', borderRadius: 3, border: '1px solid rgba(255,255,255,0.1)' }}>
+  {/* Twoja kamerka */}
+  <Box sx={{ width: 240, height: 180, border: '2px solid #23283a', borderRadius: 2, bgcolor: '#181c24', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' }}>
+    {cameraOn && localStream ? (
+      <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+    ) : (
+      <VideocamOffIcon sx={{ fontSize: 48, color: 'grey.600' }} />
+    )}
+    {/* Kontrolki kamery */}
+    <Box sx={{ position: 'absolute', bottom: 8, left: 8, display: 'flex', gap: 1, bgcolor: 'rgba(0,0,0,0.7)', borderRadius: 1, p: 0.5 }}>
+      <IconButton onClick={() => setCameraOn(v => !v)} color={cameraOn ? 'primary' : 'default'} size="small" sx={{ color: 'white' }}>
+        {cameraOn ? <VideocamIcon /> : <VideocamOffIcon />}
+      </IconButton>
+      <IconButton onClick={() => setMicOn(v => !v)} color={micOn ? 'primary' : 'default'} size="small" sx={{ color: 'white' }}>
+        {micOn ? <MicIcon /> : <MicOffIcon />}
+      </IconButton>
+    </Box>
+    {/* Nazwa użytkownika */}
+    <Box sx={{ position: 'absolute', top: 8, left: 8, bgcolor: 'rgba(0,0,0,0.7)', borderRadius: 1, px: 1, py: 0.5 }}>
+      <Typography sx={{ color: 'white', fontSize: 12, fontWeight: 600 }}>{userName} (Ty)</Typography>
+    </Box>
+  </Box>
+  {/* Kamerki wszystkich peerów (nie tylko z users) */}
+  {Object.entries(peers).map(([peerId, stream]) => {
+    // Spróbuj znaleźć userName po peerId, jeśli nie ma, pokaż peerId
+    const userObj = users.find(u => u.id === peerId);
+    const label = userObj ? userObj.userName : peerId;
+    return (
+      <Box key={peerId} sx={{ width: 240, height: 180, border: '2px solid #23283a', borderRadius: 2, bgcolor: '#181c24', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' }}>
+        {stream ? (
+          <video
+            autoPlay
+            playsInline
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            ref={el => {
+              if (el && el.srcObject !== stream) {
+                el.srcObject = stream;
+                console.log('Remote video rendered for', label, stream);
+              }
+            }}
+          />
+        ) : (
+          <VideocamOffIcon sx={{ fontSize: 48, color: 'grey.800' }} />
+        )}
+        {/* Nazwa użytkownika lub peerId */}
+        <Box sx={{ position: 'absolute', top: 8, left: 8, bgcolor: 'rgba(0,0,0,0.7)', borderRadius: 1, px: 1, py: 0.5 }}>
+          <Typography sx={{ color: 'white', fontSize: 12, fontWeight: 600 }}>{label}</Typography>
+        </Box>
+      </Box>
+    );
+  })}
+</Box>
             {/* Kamerka pod playerem w trybie normalnym */}
             {!cinemaMode && cameraMode === 'fixed' && (
               <Box sx={{ 
