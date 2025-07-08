@@ -182,27 +182,25 @@ export default function Room() {
         ]
       });
 
-      // Add local stream tracks
-      if (localStream) {
-        localStream.getTracks().forEach(track => {
-          pc.addTrack(track, localStream);
-        });
-      }
+      // Handle remote stream
+      pc.ontrack = (event) => {
+        console.log('ontrack fired for', userId, event.streams, event.track);
+        // Fallback for browsers that don't provide event.streams
+        let remoteStream = event.streams && event.streams[0];
+        if (!remoteStream) {
+          remoteStream = new MediaStream([event.track]);
+        }
+        setPeers(prev => ({
+          ...prev,
+          [userId]: remoteStream
+        }));
+      };
 
       // Handle ICE candidates
       pc.onicecandidate = (event) => {
         if (event.candidate && socketInstance) {
           socketInstance.emit('ice-candidate', { roomId, to: userId, candidate: event.candidate });
         }
-      };
-
-      // Handle remote stream
-      pc.ontrack = (event) => {
-        console.log('ontrack fired for', userId, event.streams, event.track);
-        setPeers(prev => ({
-          ...prev,
-          [userId]: event.streams[0]
-        }));
       };
 
       // Handle connection state changes
@@ -215,9 +213,21 @@ export default function Room() {
 
       peerConnections.current[userId] = pc;
 
+      // Add local stream tracks (avoid duplicates)
+      if (localStream) {
+        const senders = pc.getSenders();
+        localStream.getTracks().forEach(track => {
+          if (!senders.find(s => s.track && s.track.id === track.id)) {
+            pc.addTrack(track, localStream);
+            console.log('Added track to peer', userId, track);
+          }
+        });
+      }
+
       // Create and send offer
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
+      console.log('SDP Offer for', userId, ':', offer.sdp);
       if (socketInstance) {
         socketInstance.emit('offer', { roomId, to: userId, offer });
       }
@@ -252,49 +262,49 @@ export default function Room() {
             }
           ]
         });
-        // Dodaj lokalne tracki jeśli są
-        if (localStream) {
-          localStream.getTracks().forEach(track => {
-            pc.addTrack(track, localStream);
-          });
-        }
+        // Set ontrack before adding tracks
+        pc.ontrack = (event) => {
+          console.log('ontrack fired for', from, event.streams, event.track);
+          let remoteStream = event.streams && event.streams[0];
+          if (!remoteStream) {
+            remoteStream = new MediaStream([event.track]);
+          }
+          setPeers(prev => ({
+            ...prev,
+            [from]: remoteStream
+          }));
+        };
         pc.onicecandidate = (event) => {
           if (event.candidate && socketInstance) {
             socketInstance.emit('ice-candidate', { roomId, to: from, candidate: event.candidate });
           }
         };
-        pc.ontrack = (event) => {
-          console.log('ontrack fired for', from, event.streams, event.track);
-          setPeers(prev => ({
-            ...prev,
-            [from]: event.streams[0]
-          }));
-        };
         pc.onconnectionstatechange = () => {
+          console.log('Connection state for', from, ':', pc.connectionState);
           if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
             closePeerConnection(from);
           }
         };
         peerConnections.current[from] = pc;
       }
-      await pc.setRemoteDescription(offer);
-      // Dodaj zakolejkowane candidates
-      if (pendingCandidates.current[from]) {
-        for (const c of pendingCandidates.current[from]) {
-          try {
-            await pc.addIceCandidate(c);
-          } catch (err) {
-            console.error('Error adding ICE candidate from queue:', err, c);
+      await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      console.log('SDP Offer received from', from, ':', offer.sdp);
+      // Add local tracks (avoid duplicates)
+      if (localStream) {
+        const senders = pc.getSenders();
+        localStream.getTracks().forEach(track => {
+          if (!senders.find(s => s.track && s.track.id === track.id)) {
+            pc.addTrack(track, localStream);
+            console.log('Added track to peer (answerer)', from, track);
           }
-        }
-        pendingCandidates.current[from] = [];
+        });
       }
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
+      console.log('SDP Answer for', from, ':', answer.sdp);
       if (socketInstance) {
         socketInstance.emit('answer', { roomId, to: from, answer });
       }
-      console.log('Sent answer to', from);
     } catch (error) {
       console.error('Error handling offer:', error);
     }
@@ -304,18 +314,8 @@ export default function Room() {
     try {
       const pc = peerConnections.current[from];
       if (pc && pc.signalingState !== 'closed') {
-        await pc.setRemoteDescription(answer);
-        // Dodaj zakolejkowane candidates
-        if (pendingCandidates.current[from]) {
-          for (const c of pendingCandidates.current[from]) {
-            try {
-              await pc.addIceCandidate(c);
-            } catch (err) {
-              console.error('Error adding ICE candidate from queue:', err, c);
-            }
-          }
-          pendingCandidates.current[from] = [];
-        }
+        await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        console.log('SDP Answer received from', from, ':', answer.sdp);
       }
     } catch (error) {
       console.error('Error handling answer:', error);
@@ -1370,6 +1370,18 @@ export default function Room() {
           <ChatIcon />
         </IconButton>
       )}
+      {/* Debug panel for peer/stream state */}
+      <Box sx={{ position: 'fixed', bottom: 0, right: 0, zIndex: 9999, background: '#fff', p: 1, maxWidth: 400, maxHeight: 300, overflow: 'auto', fontSize: 12 }}>
+        <div><b>Peers:</b> {Object.keys(peers).length}</div>
+        {Object.entries(peers).map(([id, stream]) => (
+          <div key={id}>
+            <div>User: {id}</div>
+            <div>Tracks: {stream && stream.getTracks ? stream.getTracks().map(t => t.kind).join(', ') : 'none'}</div>
+          </div>
+        ))}
+        <div><b>LocalStream:</b> {localStream ? localStream.getTracks().map(t => t.kind).join(', ') : 'none'}</div>
+        <div><b>PeerConnections:</b> {Object.keys(peerConnections.current).length}</div>
+      </Box>
     </Box>
   );
 } 
