@@ -251,29 +251,25 @@ export default function Room() {
             }
           ]
         });
-        // Add local stream tracks
+        // Dodaj lokalne tracki jeśli są
         if (localStream) {
           localStream.getTracks().forEach(track => {
             pc.addTrack(track, localStream);
           });
         }
-        // Handle ICE candidates
         pc.onicecandidate = (event) => {
           if (event.candidate && socketInstance) {
             socketInstance.emit('ice-candidate', { roomId, to: from, candidate: event.candidate });
           }
         };
-        // Handle remote stream
         pc.ontrack = (event) => {
-          console.log('Received remote stream from:', from, event.streams);
+          console.log('ontrack fired for', from, event.streams, event.track);
           setPeers(prev => ({
             ...prev,
             [from]: event.streams[0]
           }));
         };
-        // Handle connection state changes
         pc.onconnectionstatechange = () => {
-          console.log('Connection state for', from, ':', pc.connectionState);
           if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
             closePeerConnection(from);
           }
@@ -284,7 +280,11 @@ export default function Room() {
       // Dodaj zakolejkowane candidates
       if (pendingCandidates.current[from]) {
         for (const c of pendingCandidates.current[from]) {
-          await pc.addIceCandidate(c);
+          try {
+            await pc.addIceCandidate(c);
+          } catch (err) {
+            console.error('Error adding ICE candidate from queue:', err, c);
+          }
         }
         pendingCandidates.current[from] = [];
       }
