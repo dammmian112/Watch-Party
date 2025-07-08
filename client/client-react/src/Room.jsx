@@ -65,6 +65,8 @@ export default function Room() {
   const peerConnections = useRef({});
   // Dodaję referencję do socket, aby zawsze mieć aktualny obiekt
   const socketRef = useRef(null);
+  // Dodaję strukturę do przechowywania kolejki ICE candidates
+  const pendingCandidates = useRef({});
 
   // Socket.IO init
   useEffect(() => {
@@ -246,6 +248,13 @@ export default function Room() {
         peerConnections.current[from] = pc;
       }
       await pc.setRemoteDescription(offer);
+      // Dodaj zakolejkowane candidates
+      if (pendingCandidates.current[from]) {
+        for (const c of pendingCandidates.current[from]) {
+          await pc.addIceCandidate(c);
+        }
+        pendingCandidates.current[from] = [];
+      }
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       if (socketInstance) {
@@ -262,6 +271,13 @@ export default function Room() {
       const pc = peerConnections.current[from];
       if (pc) {
         await pc.setRemoteDescription(answer);
+        // Dodaj zakolejkowane candidates
+        if (pendingCandidates.current[from]) {
+          for (const c of pendingCandidates.current[from]) {
+            await pc.addIceCandidate(c);
+          }
+          pendingCandidates.current[from] = [];
+        }
       }
     } catch (error) {
       console.error('Error handling answer:', error);
@@ -272,7 +288,13 @@ export default function Room() {
     try {
       const pc = peerConnections.current[from];
       if (pc) {
-        await pc.addIceCandidate(candidate);
+        if (pc.remoteDescription && pc.remoteDescription.type) {
+          await pc.addIceCandidate(candidate);
+        } else {
+          // Kolejkuj candidate
+          if (!pendingCandidates.current[from]) pendingCandidates.current[from] = [];
+          pendingCandidates.current[from].push(candidate);
+        }
       }
     } catch (error) {
       console.error('Error handling ICE candidate:', error);
