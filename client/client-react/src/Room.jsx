@@ -235,6 +235,7 @@ export default function Room() {
     }
   };
 
+  // W handleOffer peer connection jest tworzony nawet jeśli localStream nie jest dostępny
   const handleOffer = async (from, offer) => {
     try {
       const socketInstance = socketRef.current;
@@ -689,7 +690,7 @@ export default function Room() {
     };
   }, [localStream]);
 
-  // Poprawiony efekt: po uzyskaniu localStream dynamicznie dodawaj tracki do wszystkich peer connections
+  // Przywracam efekt: po uzyskaniu localStream dynamicznie dodawaj tracki do wszystkich peer connections
   useEffect(() => {
     if (localStream) {
       Object.entries(peerConnections.current).forEach(([userId, pc]) => {
