@@ -70,15 +70,15 @@ io.on('connection', (socket) => {
 
   // WebRTC Signaling
   socket.on('offer', ({ roomId, to, offer }) => {
-    socket.to(roomId).emit('offer', { from: socket.id, offer });
+    io.to(to).emit('offer', { from: socket.id, offer });
   });
 
   socket.on('answer', ({ roomId, to, answer }) => {
-    socket.to(roomId).emit('answer', { from: socket.id, answer });
+    io.to(to).emit('answer', { from: socket.id, answer });
   });
 
   socket.on('ice-candidate', ({ roomId, to, candidate }) => {
-    socket.to(roomId).emit('ice-candidate', { from: socket.id, candidate });
+    io.to(to).emit('ice-candidate', { from: socket.id, candidate });
   });
 
   // Rozłączanie
