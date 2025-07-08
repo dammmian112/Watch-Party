@@ -12,9 +12,9 @@ import TheatersIcon from '@mui/icons-material/Theaters';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import CloseIcon from '@mui/icons-material/Close';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import io from 'socket.io-client';
+import { io } from 'socket.io-client';
 
-const SOCKET_URL = 'http://192.168.1.24:5000';
+const SOCKET_URL = 'https://watch-party-trzz.onrender.com';
 
 // Dodaję styl globalny dla Bitcount Grid Double
 const bitcountFont = {
@@ -73,7 +73,10 @@ export default function Room() {
     console.log('MediaDevices available:', !!navigator.mediaDevices);
     console.log('getUserMedia available:', !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
 
-    const s = io(SOCKET_URL);
+    const s = io(SOCKET_URL, {
+      transports: ["websocket", "polling"],
+      withCredentials: false
+    });
     setSocket(s);
     s.emit('join-room', { roomId, userName });
 
