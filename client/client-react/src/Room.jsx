@@ -652,6 +652,20 @@ export default function Room() {
     };
   }, [localStream]);
 
+  // Dodaję efekt, który po uzyskaniu localStream dodaje tracki do wszystkich istniejących peer connections
+  useEffect(() => {
+    if (localStream) {
+      Object.values(peerConnections.current).forEach(pc => {
+        const senders = pc.getSenders();
+        localStream.getTracks().forEach(track => {
+          if (!senders.find(sender => sender.track && sender.track.id === track.id)) {
+            pc.addTrack(track, localStream);
+          }
+        });
+      });
+    }
+  }, [localStream]);
+
   // Formatowanie czasu
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
