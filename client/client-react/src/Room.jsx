@@ -29,6 +29,7 @@ function PeerVideo({ stream }) {
   useEffect(() => {
     if (videoRef.current && stream instanceof MediaStream) {
       videoRef.current.srcObject = stream;
+      console.log('PeerVideo srcObject set', stream);
     }
   }, [stream]);
   return (
@@ -197,7 +198,7 @@ export default function Room() {
 
       // Handle remote stream
       pc.ontrack = (event) => {
-        console.log('Received remote stream from:', userId, event.streams);
+        console.log('ontrack fired for', userId, event.streams, event.track);
         setPeers(prev => ({
           ...prev,
           [userId]: event.streams[0]
