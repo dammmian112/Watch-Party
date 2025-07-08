@@ -201,44 +201,48 @@ export default function Room() {
 
   const handleOffer = async (from, offer) => {
     try {
-      const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' }
-        ]
-      });
-
-      // Add local stream tracks
-      if (localStream) {
-        localStream.getTracks().forEach(track => {
-          pc.addTrack(track, localStream);
+      let pc = peerConnections.current[from];
+      if (!pc) {
+        pc = new RTCPeerConnection({
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+          ]
         });
-      }
-
-      // Handle ICE candidates
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          socket.emit('ice-candidate', { roomId, to: from, candidate: event.candidate });
+        // Add local stream tracks
+        if (localStream) {
+          localStream.getTracks().forEach(track => {
+            pc.addTrack(track, localStream);
+          });
         }
-      };
-
-      // Handle remote stream
-      pc.ontrack = (event) => {
-        console.log('Received remote stream from:', from);
-        setPeers(prev => ({
-          ...prev,
-          [from]: event.streams[0]
-        }));
-      };
-
-      peerConnections.current[from] = pc;
-
-      // Set remote description and create answer
+        // Handle ICE candidates
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit('ice-candidate', { roomId, to: from, candidate: event.candidate });
+          }
+        };
+        // Handle remote stream
+        pc.ontrack = (event) => {
+          console.log('Received remote stream from:', from);
+          setPeers(prev => ({
+            ...prev,
+            [from]: event.streams[0]
+          }));
+        };
+        // Handle connection state changes
+        pc.onconnectionstatechange = () => {
+          console.log('Connection state for', from, ':', pc.connectionState);
+          if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+            closePeerConnection(from);
+          }
+        };
+        peerConnections.current[from] = pc;
+      }
       await pc.setRemoteDescription(offer);
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       socket.emit('answer', { roomId, to: from, answer });
-
+      console.log('Sent answer to', from);
     } catch (error) {
       console.error('Error handling offer:', error);
     }
