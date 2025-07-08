@@ -678,19 +678,24 @@ export default function Room() {
     };
   }, [localStream]);
 
-  // Dodaję efekt, który po uzyskaniu localStream dodaje tracki do wszystkich istniejących peer connections
+  // Poprawiony efekt: po uzyskaniu localStream dynamicznie dodawaj tracki do wszystkich peer connections
   useEffect(() => {
     if (localStream) {
-      Object.values(peerConnections.current).forEach(pc => {
+      Object.entries(peerConnections.current).forEach(([userId, pc]) => {
         const senders = pc.getSenders();
         localStream.getTracks().forEach(track => {
           if (!senders.find(sender => sender.track && sender.track.id === track.id)) {
-            pc.addTrack(track, localStream);
+            try {
+              pc.addTrack(track, localStream);
+              console.log('Added track to peer', userId, track);
+            } catch (err) {
+              console.error('Error adding track to peer', userId, err);
+            }
           }
         });
       });
     }
-  }, [localStream]);
+  }, [localStream, users]);
 
   // Formatowanie czasu
   const formatTime = (seconds) => {
