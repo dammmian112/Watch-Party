@@ -170,7 +170,7 @@ export default function Room() {
 
       // Handle remote stream
       pc.ontrack = (event) => {
-        console.log('Received remote stream from:', userId);
+        console.log('Received remote stream from:', userId, event.streams);
         setPeers(prev => ({
           ...prev,
           [userId]: event.streams[0]
@@ -232,7 +232,7 @@ export default function Room() {
         };
         // Handle remote stream
         pc.ontrack = (event) => {
-          console.log('Received remote stream from:', from);
+          console.log('Received remote stream from:', from, event.streams);
           setPeers(prev => ({
             ...prev,
             [from]: event.streams[0]
