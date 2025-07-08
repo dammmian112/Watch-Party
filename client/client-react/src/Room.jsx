@@ -1201,7 +1201,10 @@ export default function Room() {
                           playsInline 
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           ref={el => {
-                            if (el) el.srcObject = peerStream;
+                            if (el && el.srcObject !== peerStream) {
+                              el.srcObject = peerStream;
+                              console.log('Remote video rendered for', user.userName, peerStream);
+                            }
                           }}
                         />
                       ) : (
