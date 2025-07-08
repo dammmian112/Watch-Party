@@ -105,9 +105,9 @@ export default function Room() {
       });
     });
 
-    // Wiadomości czatu
+    // Poprawiona obsługa wiadomości czatu
     s.on('chat-message', ({ userName, message }) => {
-      setMessages((msgs) => [...msgs, { type: 'chat', message: `${userName}: ${message}` }]);
+      setMessages((msgs) => [...msgs, { type: 'chat', userName, message }]);
     });
 
     // WebRTC signaling (pozostawiam jak było)
@@ -344,7 +344,7 @@ export default function Room() {
           videoRef.current.srcObject = stream;
         }
         
-        // Create peer connections for existing users (tylko jeśli nie mamy już połączenia)
+        // Poprawiona logika WebRTC - po włączeniu kamerki twórz peer connection dla wszystkich użytkowników
         users.forEach(user => {
           if (user.id !== socket?.id && !peerConnections.current[user.id]) {
             createPeerConnection(user.id);
@@ -760,6 +760,17 @@ export default function Room() {
       }]);
     }
   };
+
+  // Po dołączeniu do pokoju twórz peer connection dla wszystkich obecnych użytkowników, jeśli masz już localStream
+  useEffect(() => {
+    if (localStream && users.length > 0 && socket) {
+      users.forEach(user => {
+        if (user.id !== socket.id && !peerConnections.current[user.id]) {
+          createPeerConnection(user.id);
+        }
+      });
+    }
+  }, [localStream, users, socket]);
 
   return (
     <Box sx={{ minHeight: '100vh', width: '100vw', bgcolor: 'background.default', background: 'linear-gradient(135deg, #23283a 0%, #181c24 100%)', p: 0, ...bitcountFont }}>
