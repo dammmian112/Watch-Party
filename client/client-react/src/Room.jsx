@@ -774,16 +774,16 @@ export default function Room() {
     }
   };
 
-  // Po dołączeniu do pokoju twórz peer connection dla wszystkich obecnych użytkowników, jeśli masz już localStream
+  // Poprawiony useEffect na users:
   useEffect(() => {
-    if (localStream && users.length > 0 && socket) {
+    if (users.length > 0 && socket) {
       users.forEach(user => {
         if (user.id !== socket.id && !peerConnections.current[user.id]) {
           createPeerConnection(user.id);
         }
       });
     }
-  }, [localStream, users, socket]);
+  }, [users, socket]);
 
   return (
     <Box sx={{ minHeight: '100vh', width: '100vw', bgcolor: 'background.default', background: 'linear-gradient(135deg, #23283a 0%, #181c24 100%)', p: 0, ...bitcountFont }}>
