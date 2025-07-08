@@ -420,13 +420,12 @@ export default function Room() {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
-        
-        // Poprawiona logika WebRTC - po włączeniu kamerki twórz peer connection dla wszystkich użytkowników
-        users.forEach(user => {
-          if (user.id !== socket?.id && !peerConnections.current[user.id]) {
-            createPeerConnection(user.id);
-          }
-        });
+        // USUŃ: Tworzenie peer connection tutaj (przenosimy do useEffect poniżej)
+        // users.forEach(user => {
+        //   if (user.id !== socket?.id && !peerConnections.current[user.id]) {
+        //     createPeerConnection(user.id);
+        //   }
+        // });
       })
       .catch(err => {
         console.error('Błąd dostępu do kamery/mikrofonu:', err);
