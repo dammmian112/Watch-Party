@@ -844,12 +844,20 @@ export default function Room() {
   useEffect(() => {
     const myId = socket?.id || socketRef.current?.id;
     if (users.length > 0 && socket) {
-      users.forEach(user => {
-        if (user.id !== myId && !peerConnections.current[user.id]) {
-          console.log('Creating peer connection to', user.id, 'myId:', myId);
-          createPeerConnection(user.id);
+      // Znajdź siebie w users
+      const me = users.find(u => u.id === myId);
+      if (me) {
+        // Jeśli jestem nowy (mam najmniejszy index w users), inicjuję połączenia do innych
+        const myIndex = users.findIndex(u => u.id === myId);
+        if (myIndex === users.length - 1) { // jestem ostatni = nowy
+          users.forEach(user => {
+            if (user.id !== myId && !peerConnections.current[user.id]) {
+              console.log('Creating peer connection to', user.id, 'myId:', myId);
+              createPeerConnection(user.id);
+            }
+          });
         }
-      });
+      }
     }
   }, [users, socket]);
 
