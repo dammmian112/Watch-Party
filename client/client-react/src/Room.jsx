@@ -164,6 +164,10 @@ export default function Room() {
 
   // WebRTC functions
   const createPeerConnection = async (userId) => {
+    if (!localStream) {
+      console.warn('createPeerConnection called before localStream is ready!');
+      return;
+    }
     try {
       const socketInstance = socketRef.current;
       if (peerConnections.current[userId]) {
@@ -214,6 +218,7 @@ export default function Room() {
       peerConnections.current[userId] = pc;
 
       // Add local stream tracks (avoid duplicates)
+      console.log('Before adding tracks', localStream.getTracks());
       if (localStream) {
         const senders = pc.getSenders();
         localStream.getTracks().forEach(track => {
@@ -223,7 +228,7 @@ export default function Room() {
           }
         });
       }
-
+      console.log('Before createOffer', pc.getSenders());
       // Create and send offer
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
