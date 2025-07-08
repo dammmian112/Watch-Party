@@ -859,7 +859,7 @@ export default function Room() {
   // Poprawiony useEffect na users:
   useEffect(() => {
     const myId = socket?.id || socketRef.current?.id;
-    if (users.length > 0 && socket) {
+    if (users.length > 0 && socket && localStream) {
       // Znajdź siebie w users
       const me = users.find(u => u.id === myId);
       if (me) {
@@ -875,7 +875,7 @@ export default function Room() {
         }
       }
     }
-  }, [users, socket]);
+  }, [users, socket, localStream]);
 
   return (
     <Box sx={{ minHeight: '100vh', width: '100vw', bgcolor: 'background.default', background: 'linear-gradient(135deg, #23283a 0%, #181c24 100%)', p: 0, ...bitcountFont }}>
