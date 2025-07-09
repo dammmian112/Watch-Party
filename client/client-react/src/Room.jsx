@@ -11,14 +11,18 @@ import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import TheatersIcon from '@mui/icons-material/Theaters';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import CloseIcon from '@mui/icons-material/Close';
+import { useNavigate } from 'react-router-dom';
 import useWebRTC from './useWebRTC';
 import PeerVideo from './PeerVideo';
 
 const bitcountFont = {
-  fontFamily: 'system-ui',
+  fontFamily: '"Bitcount Grid Double", system-ui',
+  fontOpticalSizing: 'auto',
+  fontVariationSettings: '"slnt" 0, "CRSV" 0.5, "ELSH" 0, "ELXP" 0',
 };
 
 export default function Room() {
+  const navigate = useNavigate();
   const {
     localStream,
     peers,
@@ -209,7 +213,7 @@ export default function Room() {
     <Box sx={{ minHeight: '100vh', width: '100vw', bgcolor: 'background.default', background: 'linear-gradient(135deg, #23283a 0%, #181c24 100%)', ...bitcountFont }}>
       <AppBar position="static" sx={{ mb: 0, boxShadow: 3, bgcolor: '#23283a !important', color: 'white' }}>
         <Toolbar sx={{ flexDirection: 'column', alignItems: 'flex-start', py: 2, px: { xs: 1, sm: 3 }, ...bitcountFont }}>
-          <Typography variant="h4" fontWeight={700} sx={{ letterSpacing: 2, color: 'white', mb: 0.5, ...bitcountFont }}>
+          <Typography variant="h4" fontWeight={700} sx={{ letterSpacing: 2, color: 'white', mb: 0.5, cursor: 'pointer', ...bitcountFont }} onClick={() => navigate('/')}>
             WatchParty
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', ...bitcountFont }}>
@@ -249,6 +253,8 @@ export default function Room() {
               alignItems: 'center',
               gap: 2,
               width: '100%',
+              maxWidth: '100%',
+              boxSizing: 'border-box',
               boxShadow: '0 2px 8px 0 rgba(31, 38, 135, 0.10)'
             }}>
               <TextField
@@ -260,9 +266,9 @@ export default function Room() {
                 sx={{ 
                   bgcolor: 'rgba(35,40,58,0.97)', 
                   borderRadius: 2, 
-                  minWidth: 220,
-                  maxWidth: 400,
-                  flex: 2,
+                  minWidth: { xs: '100%', sm: 200 },
+                  maxWidth: { xs: '100%', sm: 350 },
+                  flex: { xs: 'none', sm: 2 },
                   fontSize: 16,
                   input: { fontSize: 16, ...bitcountFont },
                   label: { ...bitcountFont },
@@ -297,7 +303,7 @@ export default function Room() {
                 color="primary"
                 size="medium"
                 sx={{ 
-                  minWidth: 80, 
+                  minWidth: { xs: '100%', sm: 80 }, 
                   py: 1, 
                   px: 2.5, 
                   fontWeight: 700, 
@@ -326,8 +332,8 @@ export default function Room() {
                 sx={{
                   bgcolor: 'rgba(35,40,58,0.97)',
                   borderRadius: 2,
-                  minWidth: 90,
-                  maxWidth: 120,
+                  minWidth: { xs: '100%', sm: 90 },
+                  maxWidth: { xs: '100%', sm: 120 },
                   fontSize: 16,
                   input: { fontSize: 16, ...bitcountFont },
                   label: { ...bitcountFont },
@@ -391,7 +397,7 @@ export default function Room() {
                 variant="contained"
                 color="secondary"
                 size="medium"
-                sx={{ minWidth: 100, py: 1, px: 2.5, fontWeight: 700, fontSize: 15, borderRadius: 2, boxShadow: 'none', textTransform: 'none', transition: '0.2s', '&:hover': { bgcolor: '#ffb300', color: '#181c24', boxShadow: 'none' } }}
+                sx={{ minWidth: { xs: '100%', sm: 100 }, py: 1, px: 2.5, fontWeight: 700, fontSize: 15, borderRadius: 2, boxShadow: 'none', textTransform: 'none', transition: '0.2s', '&:hover': { bgcolor: '#ffb300', color: '#181c24', boxShadow: 'none' } }}
               >
                 Idź do minuty
               </Button>
