@@ -13,6 +13,8 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import CloseIcon from '@mui/icons-material/Close';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
+import useWebRTC from './useWebRTC';
+import PeerVideo from './PeerVideo';
 
 const SOCKET_URL = 'https://watch-party-trzz.onrender.com';
 
@@ -40,36 +42,26 @@ function PeerVideo({ stream, userName }) {
 }
 
 export default function Room() {
-  const { roomId } = useParams();
-  const [searchParams] = useSearchParams();
-  const userName = searchParams.get('user') || '';
+  const {
+    localStream,
+    peers,
+    cameraOn,
+    micOn,
+    setCameraOn,
+    setMicOn,
+    users,
+    setUsers,
+    socket,
+    userName,
+    roomId
+  } = useWebRTC();
   // DODAJĘ STAN USERS:
-  const [users, setUsers] = useState([]);
   const [dmUrl, setDmUrl] = useState('');
   const [dmInput, setDmInput] = useState('');
-  const [cameraOn, setCameraOn] = useState(false);
-  const [micOn, setMicOn] = useState(false);
   const [cameraMode, setCameraMode] = useState('fixed'); // 'fixed' or 'floating'
   const [chatOpen, setChatOpen] = useState(true);
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState('');
-  const [socket, setSocket] = useState(null);
-  const [copied, setCopied] = useState(false);
-  const playerRef = useRef();
-  const videoRef = useRef();
-  const [camPos, setCamPos] = useState({ x: 20, y: 100 });
-  const [camSize, setCamSize] = useState({ w: 240, h: 180 });
-  const [dragging, setDragging] = useState(false);
-  const [resizing, setResizing] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, w: 0, h: 0 });
-  const [camHover, setCamHover] = useState(false);
-  const [cinemaMode, setCinemaMode] = useState(false);
-  const navigate = useNavigate();
-  const [cinemaHeight, setCinemaHeight] = useState(0);
-  // Stan playera do synchronizacji
-  const [playerReady, setPlayerReady] = useState(false);
-  const [playerState, setPlayerState] = useState({ playing: false, time: 0 });
   const [dmPlayer, setDmPlayer] = useState(null);
   const [videoId, setVideoId] = useState('');
   const [currentTime, setCurrentTime] = useState(0);
@@ -150,32 +142,19 @@ export default function Room() {
   }, [roomId, userName]);
 
   // --- NOWA LOGIKA KAMEREK I MIKROFONÓW ---
-  const [localStream, setLocalStream] = useState(null);
-  const [peers, setPeers] = useState({}); // { peerId: MediaStream }
-  const peerConnections = useRef({});
-  const socketRef = useRef();
-
-  // Pobieranie streamu
-  useEffect(() => {
-    if (cameraOn || micOn) {
-      navigator.mediaDevices.getUserMedia({
-        video: cameraOn,
-        audio: micOn
-      }).then(stream => {
-        setLocalStream(stream);
-      }).catch(() => {
-        setCameraOn(false);
-        setMicOn(false);
-        setLocalStream(null);
-      });
-    } else {
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-        setLocalStream(null);
-      }
-    }
-    // eslint-disable-next-line
-  }, [cameraOn, micOn]);
+  // const {
+  //   localStream,
+  //   peers,
+  //   cameraOn,
+  //   micOn,
+  //   setCameraOn,
+  //   setMicOn,
+  //   users,
+  //   setUsers,
+  //   socket,
+  //   userName,
+  //   roomId
+  // } = useWebRTC();
 
   // Cleanup streamów po wyjściu
   useEffect(() => {
@@ -920,27 +899,7 @@ export default function Room() {
                   {cinemaMode ? (
                     <Box sx={{ position: 'absolute', right: 24, bottom: 24, display: 'flex', gap: 2, zIndex: 4000, flexWrap: 'wrap', maxWidth: 'calc(100vw - 48px)' }}>
                       {/* Twoja kamerka */}
-                      <Box sx={{ width: 120, height: 90, border: '2px solid #23283a', borderRadius: 2, bgcolor: '#181c24', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' }}>
-                        {cameraOn && localStream ? (
-                          <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          <VideocamOffIcon sx={{ fontSize: 32, color: 'grey.600' }} />
-                        )}
-                        {/* Nazwa użytkownika */}
-                        <Box sx={{ 
-                          position: 'absolute', 
-                          top: 4, 
-                          left: 4, 
-                          bgcolor: 'rgba(0,0,0,0.7)', 
-                          borderRadius: 1, 
-                          px: 0.5, 
-                          py: 0.25 
-                        }}>
-                          <Typography sx={{ color: 'white', fontSize: 10, fontWeight: 600 }}>
-                            {userName}
-                          </Typography>
-                        </Box>
-                      </Box>
+                      <PeerVideo stream={localStream} userName={userName + ' (Ty)'} />
 
                       {/* Kamery innych użytkowników */}
                       {users.map(user => {
@@ -948,45 +907,7 @@ export default function Room() {
                         const peerStream = peers[user.id];
                         
                         return (
-                          <Box key={user.id} sx={{ 
-                            width: 120, 
-                            height: 90, 
-                            border: '2px solid #23283a', 
-                            borderRadius: 2, 
-                            bgcolor: '#181c24', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center', 
-                            overflow: 'hidden',
-                            position: 'relative'
-                          }}>
-                            {peerStream ? (
-                              <video 
-                                autoPlay 
-                                playsInline 
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                ref={el => {
-                                  if (el) el.srcObject = peerStream;
-                                }}
-                              />
-                            ) : (
-                              <VideocamOffIcon sx={{ fontSize: 32, color: 'grey.800' }} />
-                            )}
-                            {/* Nazwa użytkownika */}
-                            <Box sx={{ 
-                              position: 'absolute', 
-                              top: 8, 
-                              left: 8, 
-                              bgcolor: 'rgba(0,0,0,0.7)', 
-                              borderRadius: 1, 
-                              px: 1, 
-                              py: 0.5 
-                            }}>
-                              <Typography sx={{ color: 'white', fontSize: 12, fontWeight: 600 }}>
-                                {user.userName}
-                              </Typography>
-                            </Box>
-                          </Box>
+                          <PeerVideo key={user.id} stream={peerStream} userName={user.userName} />
                         );
                       })}
                     </Box>
@@ -997,53 +918,14 @@ export default function Room() {
             {/* KAMERKI WSZYSTKICH */}
 <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', mt: 2, p: 2, bgcolor: 'rgba(35,40,58,0.3)', borderRadius: 3, border: '1px solid rgba(255,255,255,0.1)' }}>
   {/* Twoja kamerka */}
-  <Box sx={{ width: 240, height: 180, border: '2px solid #23283a', borderRadius: 2, bgcolor: '#181c24', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' }}>
-    {cameraOn && localStream ? (
-      <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-    ) : (
-      <VideocamOffIcon sx={{ fontSize: 48, color: 'grey.600' }} />
-    )}
-    {/* Kontrolki kamery */}
-    <Box sx={{ position: 'absolute', bottom: 8, left: 8, display: 'flex', gap: 1, bgcolor: 'rgba(0,0,0,0.7)', borderRadius: 1, p: 0.5 }}>
-      <IconButton onClick={() => setCameraOn(v => !v)} color={cameraOn ? 'primary' : 'default'} size="small" sx={{ color: 'white' }}>
-        {cameraOn ? <VideocamIcon /> : <VideocamOffIcon />}
-      </IconButton>
-      <IconButton onClick={() => setMicOn(v => !v)} color={micOn ? 'primary' : 'default'} size="small" sx={{ color: 'white' }}>
-        {micOn ? <MicIcon /> : <MicOffIcon />}
-      </IconButton>
-    </Box>
-    {/* Nazwa użytkownika */}
-    <Box sx={{ position: 'absolute', top: 8, left: 8, bgcolor: 'rgba(0,0,0,0.7)', borderRadius: 1, px: 1, py: 0.5 }}>
-      <Typography sx={{ color: 'white', fontSize: 12, fontWeight: 600 }}>{userName} (Ty)</Typography>
-    </Box>
-  </Box>
+  <PeerVideo stream={localStream} userName={userName + ' (Ty)'} />
   {/* Kamerki wszystkich peerów (nie tylko z users) */}
   {Object.entries(peers).map(([peerId, stream]) => {
     // Spróbuj znaleźć userName po peerId, jeśli nie ma, pokaż peerId
     const userObj = users.find(u => u.id === peerId);
     const label = userObj ? userObj.userName : peerId;
     return (
-      <Box key={peerId} sx={{ width: 240, height: 180, border: '2px solid #23283a', borderRadius: 2, bgcolor: '#181c24', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' }}>
-        {stream ? (
-          <video
-            autoPlay
-            playsInline
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            ref={el => {
-              if (el && el.srcObject !== stream) {
-                el.srcObject = stream;
-                console.log('Remote video rendered for', label, stream);
-              }
-            }}
-          />
-        ) : (
-          <VideocamOffIcon sx={{ fontSize: 48, color: 'grey.800' }} />
-        )}
-        {/* Nazwa użytkownika lub peerId */}
-        <Box sx={{ position: 'absolute', top: 8, left: 8, bgcolor: 'rgba(0,0,0,0.7)', borderRadius: 1, px: 1, py: 0.5 }}>
-          <Typography sx={{ color: 'white', fontSize: 12, fontWeight: 600 }}>{label}</Typography>
-        </Box>
-      </Box>
+      <PeerVideo key={peerId} stream={stream} userName={label} />
     );
   })}
 </Box>
@@ -1062,72 +944,7 @@ export default function Room() {
                 flexWrap: 'wrap'
               }}>
                 {/* Twoja kamerka */}
-                <Box sx={{ 
-                  width: 240, 
-                  height: 180, 
-                  border: '2px solid #23283a', 
-                  borderRadius: 2, 
-                  bgcolor: '#181c24', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  overflow: 'hidden',
-                  position: 'relative'
-                }}>
-                  {cameraOn && localStream ? (
-                    <video 
-                      ref={videoRef} 
-                      autoPlay 
-                      muted 
-                      playsInline 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                    />
-                  ) : (
-                    <VideocamOffIcon sx={{ fontSize: 48, color: 'grey.600' }} />
-                  )}
-                  {/* Kontrolki kamery */}
-                  <Box sx={{ 
-                    position: 'absolute', 
-                    bottom: 8, 
-                    left: 8, 
-                    display: 'flex', 
-                    gap: 1, 
-                    bgcolor: 'rgba(0,0,0,0.7)', 
-                    borderRadius: 1, 
-                    p: 0.5 
-                  }}>
-                    <IconButton 
-                      onClick={() => setCameraOn(v => !v)} 
-                      color={cameraOn ? 'primary' : 'default'} 
-                      size="small"
-                      sx={{ color: 'white' }}
-                    >
-                      {cameraOn ? <VideocamIcon /> : <VideocamOffIcon />}
-                    </IconButton>
-                    <IconButton 
-                      onClick={() => setMicOn(v => !v)} 
-                      color={micOn ? 'primary' : 'default'} 
-                      size="small"
-                      sx={{ color: 'white' }}
-                    >
-                      {micOn ? <MicIcon /> : <MicOffIcon />}
-                    </IconButton>
-                  </Box>
-                  {/* Nazwa użytkownika */}
-                  <Box sx={{ 
-                    position: 'absolute', 
-                    top: 8, 
-                    left: 8, 
-                    bgcolor: 'rgba(0,0,0,0.7)', 
-                    borderRadius: 1, 
-                    px: 1, 
-                    py: 0.5 
-                  }}>
-                    <Typography sx={{ color: 'white', fontSize: 12, fontWeight: 600 }}>
-                      {userName} (Ty)
-                    </Typography>
-                  </Box>
-                </Box>
+                <PeerVideo stream={localStream} userName={userName + ' (Ty)'} />
 
                 {/* Kamery innych użytkowników */}
                 {users.map(user => {
@@ -1135,48 +952,7 @@ export default function Room() {
                   const peerStream = peers[user.id];
                   
                   return (
-                    <Box key={user.id} sx={{ 
-                      width: 240, 
-                      height: 180, 
-                      border: '2px solid #23283a', 
-                      borderRadius: 2, 
-                      bgcolor: '#181c24', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      overflow: 'hidden',
-                      position: 'relative'
-                    }}>
-                      {peerStream ? (
-                        <video 
-                          autoPlay 
-                          playsInline 
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          ref={el => {
-                            if (el && el.srcObject !== peerStream) {
-                              el.srcObject = peerStream;
-                              console.log('Remote video rendered for', user.userName, peerStream);
-                            }
-                          }}
-                        />
-                      ) : (
-                        <VideocamOffIcon sx={{ fontSize: 48, color: 'grey.800' }} />
-                      )}
-                      {/* Nazwa użytkownika */}
-                      <Box sx={{ 
-                        position: 'absolute', 
-                        top: 8, 
-                        left: 8, 
-                        bgcolor: 'rgba(0,0,0,0.7)', 
-                        borderRadius: 1, 
-                        px: 1, 
-                        py: 0.5 
-                      }}>
-                        <Typography sx={{ color: 'white', fontSize: 12, fontWeight: 600 }}>
-                          {user.userName}
-                        </Typography>
-                      </Box>
-                    </Box>
+                    <PeerVideo key={user.id} stream={peerStream} userName={user.userName} />
                   );
                 })}
               </Box>
@@ -1263,20 +1039,7 @@ export default function Room() {
           onMouseEnter={() => setCamHover(true)}
           onMouseLeave={() => setCamHover(false)}
         >
-          {cameraOn && localStream ? (
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              playsInline
-              style={{ width: '100%', height: camSize.h - 50, borderRadius: 8, background: '#222', objectFit: 'cover' }}
-            />
-          ) : (
-            <Box sx={{ width: '100%', height: camSize.h - 50, borderRadius: 2, bgcolor: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-              <VideocamOffIcon sx={{ fontSize: 40, color: 'grey.600' }} />
-              <Typography sx={{ color: 'grey.400', fontSize: 14, mt: 1 }}>Kamerka wyłączona</Typography>
-            </Box>
-          )}
+          <PeerVideo stream={localStream} userName={userName + ' (Ty)'} />
           {/* Ikonki pojawiają się tylko po najechaniu */}
           <Box sx={{ display: camHover ? 'flex' : 'none', gap: 1, mt: 1, alignItems: 'center', justifyContent: 'center' }}>
             <IconButton onClick={e => { e.stopPropagation(); setCameraOn(v => !v); }} color={cameraOn ? 'primary' : 'default'} size="small">
