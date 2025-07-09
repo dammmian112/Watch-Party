@@ -134,11 +134,10 @@ export default function useWebRTC() {
 
   // Obsługa signalingu
   useEffect(() => {
-    socketRef.current = socket;
     if (!socket) return;
 
-    // Odbiór offer od nowego peer
     socket.on('offer', async ({ from, offer }) => {
+      console.log('Received offer from:', from);
       let pc = peerConnections.current[from];
       if (!pc) pc = createPeerConnection(from);
       await pc.setRemoteDescription(new window.RTCSessionDescription(offer));
@@ -153,26 +152,25 @@ export default function useWebRTC() {
       }
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      socket.emit('answer', { roomId, to: from, answer });
+      if (socket) socket.emit('answer', { roomId, to: from, answer });
     });
 
-    // Odbiór answer od peer
     socket.on('answer', async ({ from, answer }) => {
+      console.log('Received answer from:', from);
       const pc = peerConnections.current[from];
       if (pc) {
         await pc.setRemoteDescription(new window.RTCSessionDescription(answer));
       }
     });
 
-    // Odbiór ICE
     socket.on('ice-candidate', async ({ from, candidate }) => {
+      console.log('Received ICE candidate from:', from);
       const pc = peerConnections.current[from];
       if (pc && pc.remoteDescription) {
         await pc.addIceCandidate(candidate);
       }
     });
 
-    // Usuwanie peerów po wyjściu
     socket.on('user-left', (userId) => {
       closePeerConnection(userId);
     });
@@ -189,15 +187,19 @@ export default function useWebRTC() {
   useEffect(() => {
     const myId = socket?.id;
     if (!myId || !socket || !localStream) return;
-    users.forEach(user => {
-      if (user.id !== myId && !peerConnections.current[user.id]) {
-        const pc = createPeerConnection(user.id);
-        pc.createOffer().then(offer => {
-          pc.setLocalDescription(offer);
-          socket.emit('offer', { roomId, to: user.id, offer });
-        });
-      }
-    });
+    // Tylko jeśli jestem nowy (ostatni w users)
+    const myIndex = users.findIndex(u => u.id === myId);
+    if (myIndex === users.length - 1) {
+      users.forEach(user => {
+        if (user.id !== myId && !peerConnections.current[user.id]) {
+          const pc = createPeerConnection(user.id);
+          pc.createOffer().then(offer => {
+            pc.setLocalDescription(offer);
+            socket.emit('offer', { roomId, to: user.id, offer });
+          });
+        }
+      });
+    }
   }, [users, socket, localStream]);
 
   // Po zmianie localStream aktualizuj tracki u peerów
