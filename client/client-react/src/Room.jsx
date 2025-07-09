@@ -728,6 +728,21 @@ export default function Room() {
   //   });
   // }
 
+  // Funkcja do obsługi kolejkowania i dodawania ICE candidates:
+  const addPendingCandidates = async (pc, userId) => {
+    if (pendingCandidates.current[userId]) {
+      while (pendingCandidates.current[userId].length > 0) {
+        const candidate = pendingCandidates.current[userId].shift();
+        try {
+          await pc.addIceCandidate(candidate);
+        } catch (err) {
+          console.error('Error adding candidate:', err);
+        }
+      }
+      delete pendingCandidates.current[userId];
+    }
+  };
+
   // Formatowanie czasu
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
