@@ -117,7 +117,7 @@ export default function Room() {
     // Wyczyść poprzedni player
     if (dmPlayer) setDmPlayer(null);
     
-    // Użyj prostego embed URL
+    // Użyj prostego embed URL z start=0
     const embedUrl = `https://www.dailymotion.com/embed/video/${videoId}?autoplay=0&mute=0&controls=1&info=0&logo=0&related=0&start=0`;
     console.log('Embed URL:', embedUrl);
     
@@ -138,7 +138,7 @@ export default function Room() {
     
     console.log('Dailymotion iframe created and added to player');
     
-    // Nasłuchuj na postMessage z iframe
+    // Nasłuchuj na postMessage z iframe (dla synchronizacji)
     const handleMessage = (event) => {
       if (event.source !== iframe.contentWindow) return;
       if (!event.data || typeof event.data !== 'object') return;
@@ -163,21 +163,37 @@ export default function Room() {
     };
   }, [videoId]);
 
+  // Funkcja do seekowania w playerze
+  const seekToTime = (seconds) => {
+    console.log('seekToTime called with seconds:', seconds);
+    if (!dmPlayer || !videoId) {
+      console.log('No player or videoId available');
+      return;
+    }
+    
+    // Stwórz nowy URL z parametrem start
+    const newEmbedUrl = `https://www.dailymotion.com/embed/video/${videoId}?autoplay=0&mute=0&controls=1&info=0&logo=0&related=0&start=${seconds}`;
+    console.log('New embed URL with start time:', newEmbedUrl);
+    
+    // Zaktualizuj src iframe
+    dmPlayer.src = newEmbedUrl;
+    console.log('Player src updated to seek to time:', seconds);
+  };
+
   // Synchronizacja z serwera
   useEffect(() => {
     if (!socket) return;
     socket.on('player-action', ({ action, time, fromUser }) => {
+      console.log('Received player-action:', { action, time, fromUser });
       if (action === 'seek' && typeof time === 'number') {
+        console.log('Seeking to time from socket:', time);
         setCurrentTime(time);
         setLastSeekTime(time);
-        if (dmPlayer && dmPlayer.src) {
-          const newSrc = dmPlayer.src.replace(/&start=\d+/, `&start=${time}`);
-          dmPlayer.src = newSrc;
-        }
+        seekToTime(time);
       }
     });
     return () => socket.off('player-action');
-  }, [socket, dmPlayer]);
+  }, [socket, dmPlayer, videoId]);
 
   // --- CHAT SOCKET HANDLER ---
   useEffect(() => {
@@ -342,19 +358,34 @@ export default function Room() {
               />
               <Button
                 onClick={() => {
+                  console.log('Idź do minuty clicked with manualTime:', manualTime);
                   // Parse min:sec
                   let sec = 0;
                   if (/^\d+:\d+$/.test(manualTime)) {
                     const [m, s] = manualTime.split(':').map(Number);
                     sec = m * 60 + s;
+                    console.log('Parsed min:sec format:', { m, s, sec });
                   } else if (/^\d+$/.test(manualTime)) {
                     sec = Number(manualTime);
+                    console.log('Parsed seconds format:', sec);
+                  } else {
+                    console.log('Invalid time format:', manualTime);
+                    return;
                   }
+                  console.log('Final seconds to seek:', sec);
                   if (sec > 0) {
-                    if (dmPlayer && dmPlayer.contentWindow) {
-                      dmPlayer.contentWindow.postMessage({ method: 'seek', value: sec }, '*');
-                    }
+                    console.log('Seeking to seconds:', sec);
+                    console.log('dmPlayer exists:', !!dmPlayer);
+                    console.log('videoId exists:', !!videoId);
+                    
+                    // Seek locally
+                    seekToTime(sec);
+                    
+                    // Sync to all users
+                    console.log('Emitting socket player-action with time:', sec);
                     socket?.emit('player-action', { roomId, action: 'seek', time: sec });
+                  } else {
+                    console.log('Invalid seconds value:', sec);
                   }
                 }}
                 variant="contained"
