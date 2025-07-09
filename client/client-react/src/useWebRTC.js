@@ -168,26 +168,42 @@ export default function useWebRTC() {
       console.log('Received offer from:', from);
       let pc = peerConnections.current[from];
       if (!pc) pc = createPeerConnection(from);
-      await pc.setRemoteDescription(new window.RTCSessionDescription(offer));
-      // Dodaj/replace tracki jeśli localStream się zmienił
-      if (localStream) {
-        const senders = pc.getSenders();
-        localStream.getTracks().forEach(track => {
-          const sender = senders.find(s => s.track && s.track.kind === track.kind);
-          if (sender) sender.replaceTrack(track);
-          else pc.addTrack(track, localStream);
-        });
+      try {
+        if (pc.signalingState === 'stable' || pc.signalingState === 'have-remote-offer') {
+          await pc.setRemoteDescription(new window.RTCSessionDescription(offer));
+          // Dodaj/replace tracki jeśli localStream się zmienił
+          if (localStream) {
+            const senders = pc.getSenders();
+            localStream.getTracks().forEach(track => {
+              const sender = senders.find(s => s.track && s.track.kind === track.kind);
+              if (sender) sender.replaceTrack(track);
+              else pc.addTrack(track, localStream);
+            });
+          }
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          if (socket) socket.emit('answer', { roomId, to: from, answer });
+        } else {
+          console.warn('Cannot setRemoteDescription(offer) in state', pc.signalingState);
+        }
+      } catch (err) {
+        console.error('Error handling offer:', err);
       }
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      if (socket) socket.emit('answer', { roomId, to: from, answer });
     });
 
     socket.on('answer', async ({ from, answer }) => {
       console.log('Received answer from:', from);
       const pc = peerConnections.current[from];
       if (pc) {
-        await pc.setRemoteDescription(new window.RTCSessionDescription(answer));
+        try {
+          if (pc.signalingState === 'have-local-offer') {
+            await pc.setRemoteDescription(new window.RTCSessionDescription(answer));
+          } else {
+            console.warn('Cannot setRemoteDescription(answer) in state', pc.signalingState);
+          }
+        } catch (err) {
+          console.error('Error handling answer:', err);
+        }
       }
     });
 
