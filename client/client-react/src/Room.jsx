@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Box, Paper, Typography, IconButton, TextField, Button, Avatar, Fade, AppBar, Toolbar, Divider } from '@mui/material';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VideocamOffIcon from '@mui/icons-material/VideocamOff';
@@ -39,6 +39,13 @@ export default function Room() {
   const [cinemaMode, setCinemaMode] = useState(false);
   const [cameraMode, setCameraMode] = useState('fixed');
   const playerRef = useRef();
+  const [dmUrl, setDmUrl] = useState('');
+  const [dmInput, setDmInput] = useState('');
+  const [dmPlayer, setDmPlayer] = useState(null);
+  const [videoId, setVideoId] = useState('');
+  const [currentTime, setCurrentTime] = useState(0);
+  const [lastSeekTime, setLastSeekTime] = useState(0);
+  const [manualTime, setManualTime] = useState('');
 
   // Minimalny czat (tylko lokalny, bo globalny jest przez socket w useWebRTC)
   const sendMessage = () => {
@@ -54,6 +61,98 @@ export default function Room() {
     setCopied(true);
     setTimeout(() => setCopied(false), 1200);
   };
+
+  // Synchronizacja linku do filmu Dailymotion
+  useEffect(() => {
+    if (!socket) return;
+    socket.on('dm-url', (url) => {
+      setDmUrl(url);
+      setDmInput(url);
+      // Wyciągnij video ID z URL
+      const match = url.match(/\/video\/([a-zA-Z0-9]+)/);
+      if (match) {
+        setVideoId(match[1]);
+      }
+    });
+    // Po wejściu do pokoju pobierz aktualny link
+    socket.emit('get-dm-url', { roomId });
+    return () => socket.off('dm-url');
+  }, [socket, roomId]);
+
+  // Obsługa Dailymotion
+  const handleSetDm = () => {
+    if (dmInput && socket) {
+      setDmUrl(dmInput);
+      setDmInput(dmInput);
+      socket.emit('set-dm-url', { roomId, dmUrl: dmInput });
+      // Wyciągnij video ID z URL
+      const match = dmInput.match(/\/video\/([a-zA-Z0-9]+)/);
+      if (match) {
+        setVideoId(match[1]);
+      }
+    }
+  };
+
+  // Inicjalizacja Dailymotion Player API
+  useEffect(() => {
+    if (!videoId || !playerRef.current) return;
+    // Wyczyść poprzedni player
+    if (dmPlayer) setDmPlayer(null);
+    // Użyj prostego embed URL
+    const embedUrl = `https://www.dailymotion.com/embed/video/${videoId}?autoplay=0&mute=0&controls=1&info=0&logo=0&related=0&start=0`;
+    // Stwórz iframe
+    const iframe = document.createElement('iframe');
+    iframe.src = embedUrl;
+    iframe.width = '100%';
+    iframe.height = '100%';
+    iframe.frameBorder = '0';
+    iframe.allow = 'autoplay; fullscreen';
+    iframe.allowFullScreen = true;
+    iframe.style.border = '0';
+    // Wyczyść container i dodaj iframe
+    playerRef.current.innerHTML = '';
+    playerRef.current.appendChild(iframe);
+    setDmPlayer(iframe);
+    // Nasłuchuj na postMessage z iframe
+    const handleMessage = (event) => {
+      if (event.source !== iframe.contentWindow) return;
+      if (!event.data || typeof event.data !== 'object') return;
+      const { event: eventType, time } = event.data;
+      if (eventType === 'play') {
+        socket?.emit('player-action', { roomId, action: 'play' });
+      } else if (eventType === 'pause') {
+        socket?.emit('player-action', { roomId, action: 'pause' });
+      } else if (eventType === 'seeked' && typeof time === 'number') {
+        setCurrentTime(time);
+        setLastSeekTime(time);
+        socket?.emit('player-action', { roomId, action: 'seek', time });
+      } else if (eventType === 'timeupdate' && typeof time === 'number') {
+        setCurrentTime(time);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      if (playerRef.current) playerRef.current.innerHTML = '';
+      setDmPlayer(null);
+    };
+  }, [videoId]);
+
+  // Synchronizacja z serwera
+  useEffect(() => {
+    if (!socket) return;
+    socket.on('player-action', ({ action, time, fromUser }) => {
+      if (action === 'seek' && typeof time === 'number') {
+        setCurrentTime(time);
+        setLastSeekTime(time);
+        if (dmPlayer && dmPlayer.src) {
+          const newSrc = dmPlayer.src.replace(/&start=\d+/, `&start=${time}`);
+          dmPlayer.src = newSrc;
+        }
+      }
+    });
+    return () => socket.off('player-action');
+  }, [socket, dmPlayer]);
 
   return (
     <Box sx={{ minHeight: '100vh', width: '100vw', bgcolor: 'background.default', background: 'linear-gradient(135deg, #23283a 0%, #181c24 100%)', ...bitcountFont }}>

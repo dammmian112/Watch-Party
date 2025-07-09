@@ -65,6 +65,21 @@ export default function useWebRTC() {
     // eslint-disable-next-line
   }, [cameraOn, micOn]);
 
+  // Zamiast pobierać nowy stream po zmianie cameraOn/micOn, ustawiaj tylko enabled na trackach
+  useEffect(() => {
+    if (localStream) {
+      localStream.getAudioTracks().forEach(track => {
+        track.enabled = !!micOn;
+        console.log('audio track enabled:', track.enabled);
+      });
+      localStream.getVideoTracks().forEach(track => {
+        track.enabled = !!cameraOn;
+        console.log('video track enabled:', track.enabled);
+      });
+    }
+    // eslint-disable-next-line
+  }, [cameraOn, micOn]);
+
   // Cleanup streamów po wyjściu
   useEffect(() => {
     return () => {
