@@ -267,10 +267,42 @@ export default function Room() {
           </Box>
         </Toolbar>
       </AppBar>
-      <Box sx={{ width: '100%', maxWidth: '1800px', mx: 'auto', py: 2, px: 2, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4, minHeight: 'calc(100vh - 120px)', ...bitcountFont }}>
+      <Box sx={{ 
+        width: '100%', 
+        maxWidth: cinemaMode ? '100%' : '1800px', 
+        mx: 'auto', 
+        py: cinemaMode ? 0 : 2, 
+        px: cinemaMode ? 0 : 2, 
+        display: 'flex', 
+        flexDirection: { xs: 'column', md: cinemaMode ? 'column' : 'row' }, 
+        gap: cinemaMode ? 0 : 4, 
+        minHeight: cinemaMode ? '100vh' : 'calc(100vh - 120px)', 
+        ...bitcountFont 
+      }}>
         {/* Player + kamerki */}
-        <Box sx={{ flex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 0, ...bitcountFont }}>
-          <Paper elevation={6} sx={{ width: '100%', maxWidth: 950, borderRadius: 5, bgcolor: 'rgba(24,28,36,0.97)', minHeight: 480, boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.25)', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', p: 2, ...bitcountFont }}>
+        <Box sx={{ 
+          flex: cinemaMode ? 1 : 2, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          gap: cinemaMode ? 1 : 3, 
+          minWidth: 0, 
+          ...bitcountFont 
+        }}>
+          <Paper elevation={6} sx={{ 
+            width: '100%', 
+            maxWidth: cinemaMode ? '100%' : 950, 
+            borderRadius: cinemaMode ? 0 : 5, 
+            bgcolor: 'rgba(24,28,36,0.97)', 
+            minHeight: cinemaMode ? 'calc(100vh - 200px)' : 480, 
+            boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.25)', 
+            position: 'relative', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            justifyContent: 'flex-start', 
+            p: cinemaMode ? 1 : 2, 
+            ...bitcountFont 
+          }}>
             {/* --- INPUTS NAD PLAYEREM --- */}
             <Box sx={{
               mb: 3,
@@ -438,26 +470,77 @@ export default function Room() {
               <Typography variant="h6">Tu będzie player</Typography>
             </Box>
             {/* Kamerki */}
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', mt: 2, p: 2, bgcolor: 'rgba(35,40,58,0.3)', borderRadius: 3, border: '1px solid rgba(255,255,255,0.1)' }}>
-              <PeerVideo stream={localStream} userName={userName + ' (Ty)'} />
+            <Box sx={{ 
+              display: 'flex', 
+              gap: cinemaMode ? 1 : 2, 
+              flexWrap: 'wrap', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              mt: cinemaMode ? 1 : 2, 
+              p: cinemaMode ? 1 : 2, 
+              bgcolor: 'rgba(35,40,58,0.3)', 
+              borderRadius: cinemaMode ? 1 : 3, 
+              border: '1px solid rgba(255,255,255,0.1)',
+              maxHeight: cinemaMode ? '120px' : 'auto',
+              overflow: cinemaMode ? 'auto' : 'visible'
+            }}>
+              <PeerVideo stream={localStream} userName={userName + ' (Ty)'} cinemaMode={cinemaMode} />
               {Object.entries(peers).map(([peerId, stream]) => {
                 const userObj = users.find(u => u.id === peerId);
                 const label = userObj ? userObj.userName : peerId;
-                return <PeerVideo key={peerId} stream={stream} userName={label} />;
+                return <PeerVideo key={peerId} stream={stream} userName={label} cinemaMode={cinemaMode} />;
               })}
             </Box>
             {/* Przyciski kamera/mikrofon */}
-            <Box sx={{ display: 'flex', gap: 2, mt: 2, justifyContent: 'center' }}>
-              <IconButton onClick={() => setCameraOn(v => !v)} color={cameraOn ? 'primary' : 'default'} size="large">
+            <Box sx={{ 
+              display: 'flex', 
+              gap: cinemaMode ? 1 : 2, 
+              mt: cinemaMode ? 1 : 2, 
+              justifyContent: 'center',
+              p: cinemaMode ? 0.5 : 0
+            }}>
+              <IconButton 
+                onClick={() => setCameraOn(v => !v)} 
+                color={cameraOn ? 'primary' : 'default'} 
+                size={cinemaMode ? 'medium' : 'large'}
+                sx={{ 
+                  bgcolor: cinemaMode ? 'rgba(255,255,255,0.1)' : 'transparent',
+                  '&:hover': { bgcolor: cinemaMode ? 'rgba(255,255,255,0.2)' : undefined }
+                }}
+              >
                 {cameraOn ? <VideocamIcon /> : <VideocamOffIcon />}
               </IconButton>
-              <IconButton onClick={() => setMicOn(v => !v)} color={micOn ? 'primary' : 'default'} size="large">
+              <IconButton 
+                onClick={() => setMicOn(v => !v)} 
+                color={micOn ? 'primary' : 'default'} 
+                size={cinemaMode ? 'medium' : 'large'}
+                sx={{ 
+                  bgcolor: cinemaMode ? 'rgba(255,255,255,0.1)' : 'transparent',
+                  '&:hover': { bgcolor: cinemaMode ? 'rgba(255,255,255,0.2)' : undefined }
+                }}
+              >
                 {micOn ? <MicIcon /> : <MicOffIcon />}
               </IconButton>
-              <IconButton onClick={() => setCinemaMode(v => !v)} color={cinemaMode ? 'secondary' : 'primary'} size="large">
+              <IconButton 
+                onClick={() => setCinemaMode(v => !v)} 
+                color={cinemaMode ? 'secondary' : 'primary'} 
+                size={cinemaMode ? 'medium' : 'large'}
+                sx={{ 
+                  bgcolor: cinemaMode ? 'rgba(255,255,255,0.1)' : 'transparent',
+                  '&:hover': { bgcolor: cinemaMode ? 'rgba(255,255,255,0.2)' : undefined }
+                }}
+              >
                 <TheatersIcon />
               </IconButton>
-              <IconButton onClick={() => setCameraMode(m => m === 'fixed' ? 'floating' : 'fixed')} color={cameraMode === 'floating' ? 'secondary' : 'primary'} size="large">
+              <IconButton 
+                onClick={() => setCameraMode(m => m === 'fixed' ? 'floating' : 'fixed')} 
+                color={cameraMode === 'floating' ? 'secondary' : 'primary'} 
+                size={cinemaMode ? 'medium' : 'large'}
+                sx={{ 
+                  bgcolor: cinemaMode ? 'rgba(255,255,255,0.1)' : 'transparent',
+                  '&:hover': { bgcolor: cinemaMode ? 'rgba(255,255,255,0.2)' : undefined }
+                }}
+              >
                 {cameraMode === 'fixed' ? <OpenInNewIcon /> : <CloseIcon />}
               </IconButton>
             </Box>
