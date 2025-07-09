@@ -221,30 +221,31 @@ export default function Room() {
         <Box sx={{ flex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 0, ...bitcountFont }}>
           <Paper elevation={6} sx={{ width: '100%', maxWidth: 950, borderRadius: 5, bgcolor: 'rgba(24,28,36,0.97)', minHeight: 480, boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.25)', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', p: 2, ...bitcountFont }}>
             {/* --- INPUTS NAD PLAYEREM --- */}
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3, alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+            <Paper elevation={3} sx={{ mb: 3, p: { xs: 2, sm: 3 }, borderRadius: 4, bgcolor: 'rgba(255,255,255,0.07)', display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: 'center', gap: 2, width: '100%', boxShadow: '0 4px 24px 0 rgba(31, 38, 135, 0.10)' }}>
               <TextField
-                size="medium"
+                size="large"
                 placeholder="Wklej link do filmu Dailymotion..."
                 value={dmInput}
                 onChange={e => setDmInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSetDm()}
                 sx={{ 
                   bgcolor: 'background.paper', 
-                  borderRadius: 2, 
+                  borderRadius: 3, 
                   minWidth: 320,
                   maxWidth: 500,
                   flex: 2,
-                  fontSize: 18,
-                  input: { fontSize: 18, ...bitcountFont },
+                  fontSize: 20,
+                  input: { fontSize: 20, ...bitcountFont },
                   label: { ...bitcountFont },
                   '& .MuiOutlinedInput-root': {
                     color: 'white',
-                    fontSize: 18,
+                    fontSize: 20,
+                    borderRadius: 3,
                     '& fieldset': {
                       borderColor: 'rgba(255,255,255,0.3)',
                     },
                     '&:hover fieldset': {
-                      borderColor: 'rgba(255,255,255,0.5)',
+                      borderColor: '#ffe082',
                     },
                     '&.Mui-focused fieldset': {
                       borderColor: 'primary.main',
@@ -252,7 +253,7 @@ export default function Room() {
                   },
                   '& .MuiInputBase-input': {
                     color: 'white',
-                    fontSize: 18,
+                    fontSize: 20,
                     '&::placeholder': {
                       color: 'rgba(255,255,255,0.7)',
                       opacity: 1,
@@ -268,15 +269,19 @@ export default function Room() {
                 size="large"
                 sx={{ 
                   minWidth: 120, 
-                  py: 1.5, 
-                  px: 3, 
+                  py: 2, 
+                  px: 4, 
                   fontWeight: 700, 
-                  fontSize: 18, 
-                  borderRadius: 2,
+                  fontSize: 20, 
+                  borderRadius: 3,
                   bgcolor: '#ffe082',
                   color: '#23283a',
+                  boxShadow: 2,
+                  transition: '0.2s',
                   '&:hover': {
                     bgcolor: '#ffd54f',
+                    color: '#181c24',
+                    boxShadow: 4,
                   }
                 }}
               >
@@ -284,26 +289,27 @@ export default function Room() {
               </Button>
               {/* --- SEEK --- */}
               <TextField
-                size="medium"
+                size="large"
                 placeholder="min:sek (np. 1:23)"
                 value={manualTime}
                 onChange={e => setManualTime(e.target.value)}
                 sx={{
                   bgcolor: 'background.paper',
-                  borderRadius: 2,
-                  minWidth: 120,
-                  maxWidth: 140,
-                  fontSize: 18,
-                  input: { fontSize: 18, ...bitcountFont },
+                  borderRadius: 3,
+                  minWidth: 140,
+                  maxWidth: 160,
+                  fontSize: 20,
+                  input: { fontSize: 20, ...bitcountFont },
                   label: { ...bitcountFont },
                   '& .MuiOutlinedInput-root': {
                     color: 'white',
-                    fontSize: 18,
+                    fontSize: 20,
+                    borderRadius: 3,
                     '& fieldset': {
                       borderColor: 'rgba(255,255,255,0.3)',
                     },
                     '&:hover fieldset': {
-                      borderColor: 'rgba(255,255,255,0.5)',
+                      borderColor: '#ffe082',
                     },
                     '&.Mui-focused fieldset': {
                       borderColor: 'primary.main',
@@ -311,7 +317,7 @@ export default function Room() {
                   },
                   '& .MuiInputBase-input': {
                     color: 'white',
-                    fontSize: 18,
+                    fontSize: 20,
                     '&::placeholder': {
                       color: 'rgba(255,255,255,0.7)',
                       opacity: 1,
@@ -319,6 +325,7 @@ export default function Room() {
                   },
                 }}
                 InputLabelProps={{ style: { ...bitcountFont } }}
+                inputProps={{ inputMode: 'text', pattern: '[0-9:]*' }}
               />
               <Button
                 onClick={() => {
@@ -330,21 +337,22 @@ export default function Room() {
                   } else if (/^\d+$/.test(manualTime)) {
                     sec = Number(manualTime);
                   }
-                  if (sec > 0 && dmPlayer) {
-                    // Seek locally
-                    dmPlayer.contentWindow?.postMessage({ method: 'seek', value: sec }, '*');
-                    // Sync to all
+                  if (sec > 0) {
+                    // Try to seek even if player not yet loaded
+                    if (dmPlayer && dmPlayer.contentWindow) {
+                      dmPlayer.contentWindow.postMessage({ method: 'seek', value: sec }, '*');
+                    }
                     socket?.emit('player-action', { roomId, action: 'seek', time: sec });
                   }
                 }}
                 variant="contained"
                 color="secondary"
                 size="large"
-                sx={{ minWidth: 140, py: 1.5, px: 3, fontWeight: 700, fontSize: 18, borderRadius: 2 }}
+                sx={{ minWidth: 160, py: 2, px: 4, fontWeight: 700, fontSize: 20, borderRadius: 3, boxShadow: 2, transition: '0.2s', '&:hover': { bgcolor: '#ffb300', color: '#181c24', boxShadow: 4 } }}
               >
                 Idź do minuty
               </Button>
-            </Box>
+            </Paper>
             {/* Player placeholder */}
             <Box ref={playerRef} sx={{ width: '100%', aspectRatio: '16/9', bgcolor: '#111', borderRadius: 3, mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
               <Typography variant="h6">Tu będzie player</Typography>
