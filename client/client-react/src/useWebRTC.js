@@ -93,7 +93,7 @@ export default function useWebRTC() {
     // ICE
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        socketRef.current.emit('ice-candidate', {
+        socket && socket.emit('ice-candidate', {
           roomId,
           to: userId,
           candidate: event.candidate
@@ -108,12 +108,34 @@ export default function useWebRTC() {
       }
     };
 
-    // Dodaj lokalne tracki
+    // Dodaj oba tracki (audio, video) nawet jeśli są wyłączone
+    let audioTrack = null;
+    let videoTrack = null;
     if (localStream) {
-      localStream.getTracks().forEach(track => {
-        pc.addTrack(track, localStream);
-      });
+      audioTrack = localStream.getAudioTracks()[0] || null;
+      videoTrack = localStream.getVideoTracks()[0] || null;
     }
+    // Jeśli nie ma tracka, twórz pusty (muted) track
+    if (!audioTrack) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = ctx.createOscillator();
+        const dst = oscillator.connect(ctx.createMediaStreamDestination());
+        audioTrack = dst.stream.getAudioTracks()[0];
+        audioTrack.enabled = false;
+      } catch (e) { audioTrack = null; }
+    }
+    if (!videoTrack) {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 320; canvas.height = 240;
+        const stream = canvas.captureStream();
+        videoTrack = stream.getVideoTracks()[0];
+        videoTrack.enabled = false;
+      } catch (e) { videoTrack = null; }
+    }
+    if (audioTrack) pc.addTrack(audioTrack, localStream || new MediaStream([audioTrack]));
+    if (videoTrack) pc.addTrack(videoTrack, localStream || new MediaStream([videoTrack]));
 
     peerConnections.current[userId] = pc;
     return pc;
@@ -202,28 +224,23 @@ export default function useWebRTC() {
     }
   }, [users, socket, localStream]);
 
-  // Po zmianie localStream aktualizuj tracki u peerów
+  // Po zmianie localStream tylko replaceTrack, NIE twórz nowego offer
   useEffect(() => {
     Object.entries(peerConnections.current).forEach(([peerId, pc]) => {
       const senders = pc.getSenders();
-      if (localStream) {
-        localStream.getTracks().forEach(track => {
-          const sender = senders.find(s => s.track && s.track.kind === track.kind);
-          if (sender) sender.replaceTrack(track);
-          else pc.addTrack(track, localStream);
-        });
-      } else {
-        // Wyłącz wszystkie tracki
-        senders.forEach(sender => {
-          if (sender.track) sender.replaceTrack(null);
-        });
+      // Audio
+      const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+      const newAudioTrack = localStream ? localStream.getAudioTracks()[0] : null;
+      if (audioSender) {
+        audioSender.replaceTrack(newAudioTrack || null);
+        console.log('replaceTrack audio', peerId, !!newAudioTrack);
       }
-      // Renegocjacja
-      if (pc.signalingState === 'stable') {
-        pc.createOffer().then(offer => {
-          pc.setLocalDescription(offer);
-          if (socket) socket.emit('offer', { roomId, to: peerId, offer });
-        });
+      // Video
+      const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+      const newVideoTrack = localStream ? localStream.getVideoTracks()[0] : null;
+      if (videoSender) {
+        videoSender.replaceTrack(newVideoTrack || null);
+        console.log('replaceTrack video', peerId, !!newVideoTrack);
       }
     });
   }, [localStream]);
