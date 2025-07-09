@@ -78,12 +78,10 @@ export default function Room() {
   const [manualTime, setManualTime] = useState('');
 
   // WebRTC states
-  const [peers, setPeers] = useState({});
   const [localStream, setLocalStream] = useState(null);
-  const [users, setUsers] = useState([]);
+  const [peers, setPeers] = useState({}); // { peerId: MediaStream }
   const peerConnections = useRef({});
-  // Dodaję referencję do socket, aby zawsze mieć aktualny obiekt
-  const socketRef = useRef(null);
+  const socketRef = useRef();
   // Dodaję strukturę do przechowywania kolejki ICE candidates
   const pendingCandidates = useRef({});
 
