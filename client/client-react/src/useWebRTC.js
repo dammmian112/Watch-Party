@@ -39,19 +39,25 @@ export default function useWebRTC() {
 
   // Pobieranie streamu
   useEffect(() => {
+    console.log('useEffect [cameraOn, micOn]:', { cameraOn, micOn });
     if (cameraOn || micOn) {
-      navigator.mediaDevices.getUserMedia({
+      const constraints = {
         video: cameraOn,
         audio: micOn
-      }).then(stream => {
+      };
+      console.log('getUserMedia constraints:', constraints);
+      navigator.mediaDevices.getUserMedia(constraints).then(stream => {
+        console.log('getUserMedia success, tracks:', stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
         setLocalStream(stream);
-      }).catch(() => {
+      }).catch((error) => {
+        console.error('getUserMedia error:', error);
         setCameraOn(false);
         setMicOn(false);
         setLocalStream(null);
       });
     } else {
       if (localStream) {
+        console.log('Stopping localStream tracks');
         localStream.getTracks().forEach(track => track.stop());
         setLocalStream(null);
       }
@@ -226,21 +232,27 @@ export default function useWebRTC() {
 
   // Po zmianie localStream tylko replaceTrack, NIE twórz nowego offer
   useEffect(() => {
+    console.log('useEffect [localStream]:', { 
+      hasLocalStream: !!localStream, 
+      tracks: localStream ? localStream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })) : []
+    });
     Object.entries(peerConnections.current).forEach(([peerId, pc]) => {
       const senders = pc.getSenders();
+      console.log('Peer', peerId, 'senders:', senders.map(s => ({ kind: s.track?.kind, hasTrack: !!s.track })));
+      
       // Audio
       const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
       const newAudioTrack = localStream ? localStream.getAudioTracks()[0] : null;
       if (audioSender) {
-        audioSender.replaceTrack(newAudioTrack || null);
-        console.log('replaceTrack audio', peerId, !!newAudioTrack);
+        audioSender.replaceTrack(newAudioTrack);
+        console.log('replaceTrack audio', peerId, !!newAudioTrack, 'enabled:', newAudioTrack?.enabled);
       }
       // Video
       const videoSender = senders.find(s => s.track && s.track.kind === 'video');
       const newVideoTrack = localStream ? localStream.getVideoTracks()[0] : null;
       if (videoSender) {
-        videoSender.replaceTrack(newVideoTrack || null);
-        console.log('replaceTrack video', peerId, !!newVideoTrack);
+        videoSender.replaceTrack(newVideoTrack);
+        console.log('replaceTrack video', peerId, !!newVideoTrack, 'enabled:', newVideoTrack?.enabled);
       }
     });
   }, [localStream]);
