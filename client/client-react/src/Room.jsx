@@ -135,12 +135,6 @@ export default function Room() {
       console.log('User left:', userId);
       closePeerConnection(userId);
     });
-    s.on('offer', async ({ from, offer }) => {
-      console.log('Received offer from:', from);
-      if (!peerConnections.current[from]) {
-        await handleOffer(from, offer);
-      }
-    });
     s.on('answer', async ({ from, answer }) => {
       console.log('Received answer from:', from);
       await handleAnswer(from, answer);
@@ -159,6 +153,7 @@ export default function Room() {
   }, [roomId, userName]);
 
   // WebRTC functions
+  // 2. W createPeerConnection zawsze dodawaj tracki z localStream:
   const createPeerConnection = (userId) => {
     const pc = new RTCPeerConnection({
       iceServers: [
@@ -457,12 +452,29 @@ export default function Room() {
     }
   }, [cameraOn, micOn, users, socket]);
 
-  // 2. Wywołuj updatePeerConnectionsWithNewStream po zmianie localStream:
+  // Po każdej zmianie localStream:
   useEffect(() => {
-    if (localStream) {
-      updatePeerConnections();
-    }
-    // eslint-disable-next-line
+    Object.entries(peerConnections.current).forEach(([peerId, pc]) => {
+      // Usuń stare tracki
+      pc.getSenders().forEach(sender => {
+        if (sender.track && ['audio', 'video'].includes(sender.track.kind)) {
+          pc.removeTrack(sender);
+        }
+      });
+      // Dodaj nowe tracki
+      if (localStream) {
+        localStream.getTracks().forEach(track => {
+          pc.addTrack(track, localStream);
+        });
+      }
+      // Renegocjacja
+      if (pc.signalingState === 'stable') {
+        pc.createOffer().then(offer => {
+          pc.setLocalDescription(offer);
+          socketRef.current?.emit('offer', { roomId, to: peerId, offer });
+        });
+      }
+    });
   }, [localStream]);
 
   // Wysyłanie wiadomości
