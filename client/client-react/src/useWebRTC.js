@@ -222,7 +222,7 @@ export default function useWebRTC() {
       if (pc.signalingState === 'stable') {
         pc.createOffer().then(offer => {
           pc.setLocalDescription(offer);
-          socketRef.current?.emit('offer', { roomId, to: peerId, offer });
+          if (socket) socket.emit('offer', { roomId, to: peerId, offer });
         });
       }
     });
