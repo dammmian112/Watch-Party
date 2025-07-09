@@ -80,8 +80,9 @@ export default function Room() {
   const [localStream, setLocalStream] = useState(null);
   const [peers, setPeers] = useState({}); // { peerId: MediaStream }
   const peerConnections = useRef({});
-  const pendingCandidates = useRef({});
   const socketRef = useRef();
+  // Usuń powieloną deklarację users/setUsers:
+  // const [users, setUsers] = useState([]);
 
   // Socket.IO init
   useEffect(() => {
@@ -700,13 +701,16 @@ export default function Room() {
   // 3. Zmień useEffect na users, aby każdy peer tworzył połączenie do każdego innego:
   useEffect(() => {
     const myId = socket?.id;
-    if (users.length > 0 && socket && localStream) {
-      users.forEach(user => {
-        if (user.id !== myId && !peerConnections.current[user.id]) {
-          createPeerConnection(user.id);
-        }
-      });
-    }
+    if (!myId || !socket || !localStream) return;
+    users.forEach(user => {
+      if (user.id !== myId && !peerConnections.current[user.id]) {
+        const pc = createPeerConnection(user.id);
+        pc.createOffer().then(offer => {
+          pc.setLocalDescription(offer);
+          socket.emit('offer', { roomId, to: user.id, offer });
+        });
+      }
+    });
   }, [users, socket, localStream]);
 
   // 4. W handleOffer po setRemoteDescription, jeśli localStream się zmienił, zaktualizuj tracki:
