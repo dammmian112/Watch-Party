@@ -66,40 +66,61 @@ export default function Room() {
   useEffect(() => {
     if (!socket) return;
     socket.on('dm-url', (url) => {
+      console.log('Received dm-url from server:', url);
       setDmUrl(url);
       setDmInput(url);
       // Wyciągnij video ID z URL
       const match = url.match(/\/video\/([a-zA-Z0-9]+)/);
+      console.log('dm-url match result:', match);
       if (match) {
-        setVideoId(match[1]);
+        const extractedVideoId = match[1];
+        console.log('Setting videoId from dm-url:', extractedVideoId);
+        setVideoId(extractedVideoId);
       }
     });
     // Po wejściu do pokoju pobierz aktualny link
+    console.log('Requesting current dm-url for room:', roomId);
     socket.emit('get-dm-url', { roomId });
     return () => socket.off('dm-url');
   }, [socket, roomId]);
 
   // Obsługa Dailymotion
   const handleSetDm = () => {
+    console.log('handleSetDm called with dmInput:', dmInput);
     if (dmInput && socket) {
       setDmUrl(dmInput);
       setDmInput(dmInput);
       socket.emit('set-dm-url', { roomId, dmUrl: dmInput });
       // Wyciągnij video ID z URL
       const match = dmInput.match(/\/video\/([a-zA-Z0-9]+)/);
+      console.log('URL match result:', match);
       if (match) {
-        setVideoId(match[1]);
+        const extractedVideoId = match[1];
+        console.log('Extracted video ID:', extractedVideoId);
+        setVideoId(extractedVideoId);
+      } else {
+        console.log('No video ID found in URL:', dmInput);
       }
     }
   };
 
   // Inicjalizacja Dailymotion Player API
   useEffect(() => {
-    if (!videoId || !playerRef.current) return;
+    console.log('Player useEffect triggered:', { videoId, playerRef: !!playerRef.current });
+    if (!videoId || !playerRef.current) {
+      console.log('Missing videoId or playerRef:', { videoId, playerRef: !!playerRef.current });
+      return;
+    }
+    
+    console.log('Creating Dailymotion player for videoId:', videoId);
+    
     // Wyczyść poprzedni player
     if (dmPlayer) setDmPlayer(null);
+    
     // Użyj prostego embed URL
     const embedUrl = `https://www.dailymotion.com/embed/video/${videoId}?autoplay=0&mute=0&controls=1&info=0&logo=0&related=0&start=0`;
+    console.log('Embed URL:', embedUrl);
+    
     // Stwórz iframe
     const iframe = document.createElement('iframe');
     iframe.src = embedUrl;
@@ -109,10 +130,14 @@ export default function Room() {
     iframe.allow = 'autoplay; fullscreen';
     iframe.allowFullScreen = true;
     iframe.style.border = '0';
+    
     // Wyczyść container i dodaj iframe
     playerRef.current.innerHTML = '';
     playerRef.current.appendChild(iframe);
     setDmPlayer(iframe);
+    
+    console.log('Dailymotion iframe created and added to player');
+    
     // Nasłuchuj na postMessage z iframe
     const handleMessage = (event) => {
       if (event.source !== iframe.contentWindow) return;
@@ -188,6 +213,65 @@ export default function Room() {
             {/* Player placeholder */}
             <Box ref={playerRef} sx={{ width: '100%', aspectRatio: '16/9', bgcolor: '#111', borderRadius: 3, mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
               <Typography variant="h6">Tu będzie player</Typography>
+            </Box>
+            {/* Dailymotion link input */}
+            <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
+              <TextField
+                size="small"
+                fullWidth
+                placeholder="Wklej link do filmu Dailymotion..."
+                value={dmInput}
+                onChange={e => setDmInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSetDm()}
+                sx={{ 
+                  bgcolor: 'background.paper', 
+                  borderRadius: 1, 
+                  ...bitcountFont, 
+                  input: { ...bitcountFont }, 
+                  label: { ...bitcountFont },
+                  '& .MuiOutlinedInput-root': {
+                    color: 'white',
+                    '& fieldset': {
+                      borderColor: 'rgba(255,255,255,0.3)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'rgba(255,255,255,0.5)',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: 'primary.main',
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: 'white',
+                    '&::placeholder': {
+                      color: 'rgba(255,255,255,0.7)',
+                      opacity: 1,
+                    },
+                  },
+                }}
+                InputLabelProps={{ style: { ...bitcountFont } }}
+              />
+              <Button
+                onClick={handleSetDm}
+                variant="contained"
+                color="primary"
+                size="small"
+                sx={{ 
+                  minWidth: 80, 
+                  py: 1, 
+                  px: 2, 
+                  fontWeight: 700, 
+                  fontSize: 14, 
+                  ...bitcountFont,
+                  bgcolor: '#ffe082',
+                  color: '#23283a',
+                  '&:hover': {
+                    bgcolor: '#ffd54f',
+                  }
+                }}
+              >
+                Idź do
+              </Button>
             </Box>
             {/* Kamerki */}
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', mt: 2, p: 2, bgcolor: 'rgba(35,40,58,0.3)', borderRadius: 3, border: '1px solid rgba(255,255,255,0.1)' }}>
