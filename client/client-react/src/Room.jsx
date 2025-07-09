@@ -43,6 +43,8 @@ export default function Room() {
   const { roomId } = useParams();
   const [searchParams] = useSearchParams();
   const userName = searchParams.get('user') || '';
+  // DODAJĘ STAN USERS:
+  const [users, setUsers] = useState([]);
   const [dmUrl, setDmUrl] = useState('');
   const [dmInput, setDmInput] = useState('');
   const [cameraOn, setCameraOn] = useState(false);
