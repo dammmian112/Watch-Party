@@ -24,21 +24,18 @@ const bitcountFont = {
 };
 
 // Komponent do poprawnego przypisywania srcObject do <video>
-function PeerVideo({ stream }) {
-  const videoRef = useRef(null);
+function PeerVideo({ stream, userName }) {
+  const videoRef = useRef();
   useEffect(() => {
-    if (videoRef.current && stream instanceof MediaStream) {
+    if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
-      console.log('PeerVideo srcObject set', stream);
     }
   }, [stream]);
   return (
-    <video
-      ref={videoRef}
-      autoPlay
-      playsInline
-      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-    />
+    <Box>
+      <video ref={videoRef} autoPlay playsInline style={{ width: 240, height: 180, objectFit: 'cover', borderRadius: 8, border: '2px solid #23283a' }} />
+      <Typography align="center" sx={{ color: 'white', fontSize: 12, fontWeight: 600 }}>{userName}</Typography>
+    </Box>
   );
 }
 
@@ -81,9 +78,8 @@ export default function Room() {
   const [localStream, setLocalStream] = useState(null);
   const [peers, setPeers] = useState({}); // { peerId: MediaStream }
   const peerConnections = useRef({});
-  const socketRef = useRef();
-  // Dodaję strukturę do przechowywania kolejki ICE candidates
   const pendingCandidates = useRef({});
+  const socketRef = useRef();
 
   // Socket.IO init
   useEffect(() => {
@@ -161,91 +157,45 @@ export default function Room() {
   }, [roomId, userName]);
 
   // WebRTC functions
-  const createPeerConnection = async (userId) => {
-    if (!localStream) {
-      console.warn('createPeerConnection called before localStream is ready!');
-      return;
-    }
-    try {
-      const socketInstance = socketRef.current;
-      if (peerConnections.current[userId]) {
-        closePeerConnection(userId);
-      }
-      console.log('createPeerConnection called for', userId, 'myId:', socketInstance?.id);
-      const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          {
-            urls: 'turn:openrelay.metered.ca:80',
-            username: 'openrelayproject',
-            credential: 'openrelayproject'
-          }
-        ]
-      });
-
-      // Handle remote stream
-      pc.ontrack = (event) => {
-        console.log('ontrack fired for', userId, event.streams, event.track);
-        // Fallback for browsers that don't provide event.streams
-        let remoteStream = event.streams && event.streams[0];
-        if (!remoteStream) {
-          remoteStream = new MediaStream([event.track]);
+  const createPeerConnection = (userId) => {
+    const pc = new RTCPeerConnection({
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        {
+          urls: 'turn:openrelay.metered.ca:80',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
         }
-        setPeers(prev => ({
-          ...prev,
-          [userId]: remoteStream
-        }));
-      };
+      ]
+    });
 
-      // Handle ICE candidates
-      pc.onicecandidate = (event) => {
-        if (event.candidate && socketInstance) {
-          socketInstance.emit('ice-candidate', { roomId, to: userId, candidate: event.candidate });
-        }
-      };
+    pc.ontrack = (event) => {
+      setPeers(prev => ({
+        ...prev,
+        [userId]: event.streams[0]
+      }));
+    };
 
-      // Handle connection state changes
-      pc.onconnectionstatechange = () => {
-        console.log('Connection state for', userId, ':', pc.connectionState);
-        if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-          closePeerConnection(userId);
-        }
-      };
-
-      peerConnections.current[userId] = pc;
-
-      // Add local stream tracks (avoid duplicates)
-      console.log('Before adding tracks', localStream.getTracks());
-      if (localStream) {
-        const senders = pc.getSenders();
-        localStream.getTracks().forEach(track => {
-          if (!senders.find(s => s.track && s.track.id === track.id)) {
-            pc.addTrack(track, localStream);
-            console.log('Added track to peer', userId, track);
-          }
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        socketRef.current.emit('ice-candidate', {
+          roomId,
+          to: userId,
+          candidate: event.candidate
         });
       }
-      console.log('Before createOffer', pc.getSenders());
-      // Create and send offer
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      console.log('SDP Offer for', userId, ':', offer.sdp);
-      if (socketInstance) {
-        socketInstance.emit('offer', { roomId, to: userId, offer });
+    };
+
+    pc.onconnectionstatechange = () => {
+      if (["disconnected", "failed"].includes(pc.connectionState)) {
+        closePeerConnection(userId);
       }
+    };
 
-      // Timeout dla połączenia
-      setTimeout(() => {
-        if (pc.connectionState !== 'connected' && peerConnections.current[userId]) {
-          console.log('WebRTC connection timeout for:', userId);
-          closePeerConnection(userId);
-        }
-      }, 10000); // 10 sekund timeout
-
-    } catch (error) {
-      console.error('Error creating peer connection:', error);
-    }
+    peerConnections.current[userId] = pc;
+    addPendingCandidates(pc, userId);
+    return pc;
   };
 
   // W handleOffer peer connection jest tworzony nawet jeśli localStream nie jest dostępny
@@ -367,13 +317,13 @@ export default function Room() {
   };
 
   // 1. Dodaj funkcję do aktualizacji tracków i renegocjacji:
-  const updatePeerConnectionsWithNewStream = async () => {
-    const myId = socket?.id || socketRef.current?.id;
-    for (const [userId, pc] of Object.entries(peerConnections.current)) {
+  const updatePeerConnections = async () => {
+    Object.entries(peerConnections.current).forEach(([userId, pc]) => {
       // Usuń stare tracki
       pc.getSenders().forEach(sender => {
-        if (sender.track && sender.track.kind === 'audio') sender.replaceTrack(null);
-        if (sender.track && sender.track.kind === 'video') sender.replaceTrack(null);
+        if (sender.track && ['audio', 'video'].includes(sender.track.kind)) {
+          pc.removeTrack(sender);
+        }
       });
       // Dodaj nowe tracki
       if (localStream) {
@@ -388,11 +338,12 @@ export default function Room() {
       }
       // Renegocjacja
       if (pc.signalingState === 'stable') {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        socketRef.current?.emit('offer', { roomId, to: userId, offer });
+        pc.createOffer().then(offer => {
+          pc.setLocalDescription(offer);
+          socketRef.current?.emit('offer', { roomId, to: userId, offer });
+        });
       }
-    }
+    });
   };
 
   // Włączanie/wyłączanie kamery
@@ -507,7 +458,7 @@ export default function Room() {
   // 2. Wywołuj updatePeerConnectionsWithNewStream po zmianie localStream:
   useEffect(() => {
     if (localStream) {
-      updatePeerConnectionsWithNewStream();
+      updatePeerConnections();
     }
     // eslint-disable-next-line
   }, [localStream]);
@@ -734,7 +685,7 @@ export default function Room() {
 
   // 3. Zmień useEffect na users, aby każdy peer tworzył połączenie do każdego innego:
   useEffect(() => {
-    const myId = socket?.id || socketRef.current?.id;
+    const myId = socket?.id;
     if (users.length > 0 && socket && localStream) {
       users.forEach(user => {
         if (user.id !== myId && !peerConnections.current[user.id]) {
