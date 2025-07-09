@@ -296,11 +296,18 @@ export default function Room() {
       console.log('SDP Offer received from', from, ':', offer.sdp);
       // Add local tracks (avoid duplicates)
       if (localStream) {
-        const senders = pc.getSenders();
+        // Usuń stare tracki
+        pc.getSenders().forEach(sender => {
+          if (sender.track && sender.track.kind === 'audio') sender.replaceTrack(null);
+          if (sender.track && sender.track.kind === 'video') sender.replaceTrack(null);
+        });
+        // Dodaj nowe tracki
         localStream.getTracks().forEach(track => {
-          if (!senders.find(s => s.track && s.track.id === track.id)) {
+          const sender = pc.getSenders().find(s => s.track && s.track.kind === track.kind);
+          if (sender) {
+            sender.replaceTrack(track);
+          } else {
             pc.addTrack(track, localStream);
-            console.log('Added track to peer (answerer)', from, track);
           }
         });
       }
@@ -359,6 +366,35 @@ export default function Room() {
       delete newPeers[userId];
       return newPeers;
     });
+  };
+
+  // 1. Dodaj funkcję do aktualizacji tracków i renegocjacji:
+  const updatePeerConnectionsWithNewStream = async () => {
+    const myId = socket?.id || socketRef.current?.id;
+    for (const [userId, pc] of Object.entries(peerConnections.current)) {
+      // Usuń stare tracki
+      pc.getSenders().forEach(sender => {
+        if (sender.track && sender.track.kind === 'audio') sender.replaceTrack(null);
+        if (sender.track && sender.track.kind === 'video') sender.replaceTrack(null);
+      });
+      // Dodaj nowe tracki
+      if (localStream) {
+        localStream.getTracks().forEach(track => {
+          const sender = pc.getSenders().find(s => s.track && s.track.kind === track.kind);
+          if (sender) {
+            sender.replaceTrack(track);
+          } else {
+            pc.addTrack(track, localStream);
+          }
+        });
+      }
+      // Renegocjacja
+      if (pc.signalingState === 'stable') {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socketRef.current?.emit('offer', { roomId, to: userId, offer });
+      }
+    }
   };
 
   // Włączanie/wyłączanie kamery
@@ -469,6 +505,14 @@ export default function Room() {
       });
     }
   }, [cameraOn, micOn, users, socket]);
+
+  // 2. Wywołuj updatePeerConnectionsWithNewStream po zmianie localStream:
+  useEffect(() => {
+    if (localStream) {
+      updatePeerConnectionsWithNewStream();
+    }
+    // eslint-disable-next-line
+  }, [localStream]);
 
   // Wysyłanie wiadomości
   const sendMessage = () => {
@@ -690,24 +734,36 @@ export default function Room() {
     };
   }, [localStream]);
 
-  // Przywracam efekt: po uzyskaniu localStream dynamicznie dodawaj tracki do wszystkich peer connections
+  // 3. Zmień useEffect na users, aby każdy peer tworzył połączenie do każdego innego:
   useEffect(() => {
-    if (localStream) {
-      Object.entries(peerConnections.current).forEach(([userId, pc]) => {
-        const senders = pc.getSenders();
-        localStream.getTracks().forEach(track => {
-          if (!senders.find(sender => sender.track && sender.track.id === track.id)) {
-            try {
-              pc.addTrack(track, localStream);
-              console.log('Added track to peer', userId, track);
-            } catch (err) {
-              console.error('Error adding track to peer', userId, err);
-            }
-          }
-        });
+    const myId = socket?.id || socketRef.current?.id;
+    if (users.length > 0 && socket && localStream) {
+      users.forEach(user => {
+        if (user.id !== myId && !peerConnections.current[user.id]) {
+          createPeerConnection(user.id);
+        }
       });
     }
-  }, [localStream, users]);
+  }, [users, socket, localStream]);
+
+  // 4. W handleOffer po setRemoteDescription, jeśli localStream się zmienił, zaktualizuj tracki:
+  // (dodaj po await pc.setRemoteDescription(new RTCSessionDescription(offer));)
+  // if (localStream) {
+  //   // Usuń stare tracki
+  //   pc.getSenders().forEach(sender => {
+  //     if (sender.track && sender.track.kind === 'audio') sender.replaceTrack(null);
+  //     if (sender.track && sender.track.kind === 'video') sender.replaceTrack(null);
+  //   });
+  //   // Dodaj nowe tracki
+  //   localStream.getTracks().forEach(track => {
+  //     const sender = pc.getSenders().find(s => s.track && s.track.kind === track.kind);
+  //     if (sender) {
+  //       sender.replaceTrack(track);
+  //     } else {
+  //       pc.addTrack(track, localStream);
+  //     }
+  //   });
+  // }
 
   // Formatowanie czasu
   const formatTime = (seconds) => {
@@ -865,25 +921,25 @@ export default function Room() {
   };
 
   // Poprawiony useEffect na users:
-  useEffect(() => {
-    const myId = socket?.id || socketRef.current?.id;
-    if (users.length > 0 && socket && localStream) {
-      // Znajdź siebie w users
-      const me = users.find(u => u.id === myId);
-      if (me) {
-        // Jeśli jestem nowy (mam najmniejszy index w users), inicjuję połączenia do innych
-        const myIndex = users.findIndex(u => u.id === myId);
-        if (myIndex === users.length - 1) { // jestem ostatni = nowy
-          users.forEach(user => {
-            if (user.id !== myId && !peerConnections.current[user.id]) {
-              console.log('Creating peer connection to', user.id, 'myId:', myId);
-              createPeerConnection(user.id);
-            }
-          });
-        }
-      }
-    }
-  }, [users, socket, localStream]);
+  // useEffect(() => {
+  //   const myId = socket?.id || socketRef.current?.id;
+  //   if (users.length > 0 && socket && localStream) {
+  //     // Znajdź siebie w users
+  //     const me = users.find(u => u.id === myId);
+  //     if (me) {
+  //       // Jeśli jestem nowy (mam najmniejszy index w users), inicjuję połączenia do innych
+  //       const myIndex = users.findIndex(u => u.id === myId);
+  //       if (myIndex === users.length - 1) { // jestem ostatni = nowy
+  //         users.forEach(user => {
+  //           if (user.id !== myId && !peerConnections.current[user.id]) {
+  //             console.log('Creating peer connection to', user.id, 'myId:', myId);
+  //             createPeerConnection(user.id);
+  //           }
+  //         });
+  //       }
+  //     }
+  //   }
+  // }, [users, socket, localStream]);
 
   return (
     <Box sx={{ minHeight: '100vh', width: '100vw', bgcolor: 'background.default', background: 'linear-gradient(135deg, #23283a 0%, #181c24 100%)', p: 0, ...bitcountFont }}>
