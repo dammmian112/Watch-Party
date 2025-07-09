@@ -179,6 +179,16 @@ export default function Room() {
     return () => socket.off('player-action');
   }, [socket, dmPlayer]);
 
+  // --- CHAT SOCKET HANDLER ---
+  useEffect(() => {
+    if (!socket) return;
+    const handler = (msg) => {
+      setMessages(prev => [...prev, msg]);
+    };
+    socket.on('chat-message', handler);
+    return () => socket.off('chat-message', handler);
+  }, [socket]);
+
   return (
     <Box sx={{ minHeight: '100vh', width: '100vw', bgcolor: 'background.default', background: 'linear-gradient(135deg, #23283a 0%, #181c24 100%)', ...bitcountFont }}>
       <AppBar position="static" sx={{ mb: 0, boxShadow: 3, bgcolor: '#23283a !important', color: 'white' }}>
@@ -210,27 +220,26 @@ export default function Room() {
         {/* Player + kamerki */}
         <Box sx={{ flex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 0, ...bitcountFont }}>
           <Paper elevation={6} sx={{ width: '100%', maxWidth: 950, borderRadius: 5, bgcolor: 'rgba(24,28,36,0.97)', minHeight: 480, boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.25)', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', p: 2, ...bitcountFont }}>
-            {/* Player placeholder */}
-            <Box ref={playerRef} sx={{ width: '100%', aspectRatio: '16/9', bgcolor: '#111', borderRadius: 3, mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-              <Typography variant="h6">Tu będzie player</Typography>
-            </Box>
-            {/* Dailymotion link input */}
-            <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
+            {/* --- INPUTS NAD PLAYEREM --- */}
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3, alignItems: 'center', justifyContent: 'center', width: '100%' }}>
               <TextField
-                size="small"
-                fullWidth
+                size="medium"
                 placeholder="Wklej link do filmu Dailymotion..."
                 value={dmInput}
                 onChange={e => setDmInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSetDm()}
                 sx={{ 
                   bgcolor: 'background.paper', 
-                  borderRadius: 1, 
-                  ...bitcountFont, 
-                  input: { ...bitcountFont }, 
+                  borderRadius: 2, 
+                  minWidth: 320,
+                  maxWidth: 500,
+                  flex: 2,
+                  fontSize: 18,
+                  input: { fontSize: 18, ...bitcountFont },
                   label: { ...bitcountFont },
                   '& .MuiOutlinedInput-root': {
                     color: 'white',
+                    fontSize: 18,
                     '& fieldset': {
                       borderColor: 'rgba(255,255,255,0.3)',
                     },
@@ -243,6 +252,7 @@ export default function Room() {
                   },
                   '& .MuiInputBase-input': {
                     color: 'white',
+                    fontSize: 18,
                     '&::placeholder': {
                       color: 'rgba(255,255,255,0.7)',
                       opacity: 1,
@@ -255,14 +265,14 @@ export default function Room() {
                 onClick={handleSetDm}
                 variant="contained"
                 color="primary"
-                size="small"
+                size="large"
                 sx={{ 
-                  minWidth: 80, 
-                  py: 1, 
-                  px: 2, 
+                  minWidth: 120, 
+                  py: 1.5, 
+                  px: 3, 
                   fontWeight: 700, 
-                  fontSize: 14, 
-                  ...bitcountFont,
+                  fontSize: 18, 
+                  borderRadius: 2,
                   bgcolor: '#ffe082',
                   color: '#23283a',
                   '&:hover': {
@@ -272,6 +282,72 @@ export default function Room() {
               >
                 Idź do
               </Button>
+              {/* --- SEEK --- */}
+              <TextField
+                size="medium"
+                placeholder="min:sek (np. 1:23)"
+                value={manualTime}
+                onChange={e => setManualTime(e.target.value)}
+                sx={{
+                  bgcolor: 'background.paper',
+                  borderRadius: 2,
+                  minWidth: 120,
+                  maxWidth: 140,
+                  fontSize: 18,
+                  input: { fontSize: 18, ...bitcountFont },
+                  label: { ...bitcountFont },
+                  '& .MuiOutlinedInput-root': {
+                    color: 'white',
+                    fontSize: 18,
+                    '& fieldset': {
+                      borderColor: 'rgba(255,255,255,0.3)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'rgba(255,255,255,0.5)',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: 'primary.main',
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: 'white',
+                    fontSize: 18,
+                    '&::placeholder': {
+                      color: 'rgba(255,255,255,0.7)',
+                      opacity: 1,
+                    },
+                  },
+                }}
+                InputLabelProps={{ style: { ...bitcountFont } }}
+              />
+              <Button
+                onClick={() => {
+                  // Parse min:sec
+                  let sec = 0;
+                  if (/^\d+:\d+$/.test(manualTime)) {
+                    const [m, s] = manualTime.split(':').map(Number);
+                    sec = m * 60 + s;
+                  } else if (/^\d+$/.test(manualTime)) {
+                    sec = Number(manualTime);
+                  }
+                  if (sec > 0 && dmPlayer) {
+                    // Seek locally
+                    dmPlayer.contentWindow?.postMessage({ method: 'seek', value: sec }, '*');
+                    // Sync to all
+                    socket?.emit('player-action', { roomId, action: 'seek', time: sec });
+                  }
+                }}
+                variant="contained"
+                color="secondary"
+                size="large"
+                sx={{ minWidth: 140, py: 1.5, px: 3, fontWeight: 700, fontSize: 18, borderRadius: 2 }}
+              >
+                Idź do minuty
+              </Button>
+            </Box>
+            {/* Player placeholder */}
+            <Box ref={playerRef} sx={{ width: '100%', aspectRatio: '16/9', bgcolor: '#111', borderRadius: 3, mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+              <Typography variant="h6">Tu będzie player</Typography>
             </Box>
             {/* Kamerki */}
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', mt: 2, p: 2, bgcolor: 'rgba(35,40,58,0.3)', borderRadius: 3, border: '1px solid rgba(255,255,255,0.1)' }}>
