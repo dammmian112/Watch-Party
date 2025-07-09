@@ -69,8 +69,16 @@ export default function Room() {
   const [manualTime, setManualTime] = useState('');
 
   // WebRTC states
-  const peerConnections = useRef({});
-  const socketRef = useRef();
+  const playerRef = useRef();
+  const [playerState, setPlayerState] = useState({ playing: false, time: 0 });
+  const [cinemaMode, setCinemaMode] = useState(false);
+  const [camPos, setCamPos] = useState({ x: 0, y: 0 });
+  const [camSize, setCamSize] = useState({ w: 120, h: 90 });
+  const [dragging, setDragging] = useState(false);
+  const [resizing, setResizing] = useState(false);
+  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, w: 0, h: 0 });
+  const [camHover, setCamHover] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Socket.IO init
   useEffect(() => {
@@ -86,7 +94,6 @@ export default function Room() {
       withCredentials: false
     });
     setSocket(s);
-    socketRef.current = s;
     s.emit('join-room', { roomId, userName });
 
     // Powiadomienie o nowym użytkowniku
@@ -122,39 +129,24 @@ export default function Room() {
     // WebRTC signaling (pozostawiam jak było)
     s.on('user-left', (userId) => {
       console.log('User left:', userId);
-      closePeerConnection(userId);
+      // closePeerConnection(userId); // Usuwamy tę funkcję
     });
     s.on('answer', async ({ from, answer }) => {
       console.log('Received answer from:', from);
-      await handleAnswer(from, answer);
+      // await handleAnswer(from, answer); // Usuwamy tę funkcję
     });
     s.on('ice-candidate', async ({ from, candidate }) => {
       console.log('Received ICE candidate from:', from);
-      await handleIceCandidate(from, candidate);
+      // await handleIceCandidate(from, candidate); // Usuwamy tę funkcję
     });
 
     return () => {
       s.disconnect();
-      Object.keys(peerConnections.current).forEach(userId => {
-        closePeerConnection(userId);
-      });
+      // Object.keys(peerConnections.current).forEach(userId => { // Usuwamy tę funkcję
+      //   closePeerConnection(userId);
+      // });
     };
   }, [roomId, userName]);
-
-  // --- NOWA LOGIKA KAMEREK I MIKROFONÓW ---
-  // const {
-  //   localStream,
-  //   peers,
-  //   cameraOn,
-  //   micOn,
-  //   setCameraOn,
-  //   setMicOn,
-  //   users,
-  //   setUsers,
-  //   socket,
-  //   userName,
-  //   roomId
-  // } = useWebRTC();
 
   // Cleanup streamów po wyjściu
   useEffect(() => {
@@ -162,166 +154,166 @@ export default function Room() {
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
       }
-      Object.values(peerConnections.current).forEach(pc => pc.close());
-      peerConnections.current = {};
-      setPeers({});
+      // Object.values(peerConnections.current).forEach(pc => pc.close()); // Usuwamy tę funkcję
+      // peerConnections.current = {}; // Usuwamy tę funkcję
+      // setPeers({}); // Usuwamy tę funkcję
     };
   }, [localStream]);
 
   // Tworzenie peer connection
-  const createPeerConnection = (userId) => {
-    const pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        {
-          urls: 'turn:openrelay.metered.ca:80',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        }
-      ]
-    });
+  // const createPeerConnection = (userId) => { // Usuwamy tę funkcję
+  //   const pc = new RTCPeerConnection({ // Usuwamy tę funkcję
+  //     iceServers: [ // Usuwamy tę funkcję
+  //       { urls: 'stun:stun.l.google.com:19302' }, // Usuwamy tę funkcję
+  //       { urls: 'stun:stun1.l.google.com:19302' }, // Usuwamy tę funkcję
+  //       { // Usuwamy tę funkcję
+  //         urls: 'turn:openrelay.metered.ca:80', // Usuwamy tę funkcję
+  //         username: 'openrelayproject', // Usuwamy tę funkcję
+  //         credential: 'openrelayproject' // Usuwamy tę funkcję
+  //       } // Usuwamy tę funkcję
+  //     ] // Usuwamy tę funkcję
+  //   }); // Usuwamy tę funkcję
 
-    // Odbiór streamu od peerów
-    pc.ontrack = (event) => {
-      setPeers(prev => ({ ...prev, [userId]: event.streams[0] }));
-    };
+  //   // Odbiór streamu od peerów // Usuwamy tę funkcję
+  //   pc.ontrack = (event) => { // Usuwamy tę funkcję
+  //     setPeers(prev => ({ ...prev, [userId]: event.streams[0] })); // Usuwamy tę funkcję
+  //   }; // Usuwamy tę funkcję
 
-    // ICE
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        socketRef.current.emit('ice-candidate', {
-          roomId,
-          to: userId,
-          candidate: event.candidate
-        });
-      }
-    };
+  //   // ICE // Usuwamy tę funkcję
+  //   pc.onicecandidate = (event) => { // Usuwamy tę funkcję
+  //     if (event.candidate) { // Usuwamy tę funkcję
+  //       socketRef.current.emit('ice-candidate', { // Usuwamy tę funkcję
+  //         roomId, // Usuwamy tę funkcję
+  //         to: userId, // Usuwamy tę funkcję
+  //         candidate: event.candidate // Usuwamy tę funkcję
+  //       }); // Usuwamy tę funkcję
+  //     } // Usuwamy tę funkcję
+  //   }; // Usuwamy tę funkcję
 
-    // Usuwanie peerów po rozłączeniu
-    pc.onconnectionstatechange = () => {
-      if (["disconnected", "failed", "closed"].includes(pc.connectionState)) {
-        closePeerConnection(userId);
-      }
-    };
+  //   // Usuwanie peerów po rozłączeniu // Usuwamy tę funkcję
+  //   pc.onconnectionstatechange = () => { // Usuwamy tę funkcję
+  //     if (["disconnected", "failed", "closed"].includes(pc.connectionState)) { // Usuwamy tę funkcję
+  //       closePeerConnection(userId); // Usuwamy tę funkcję
+  //     } // Usuwamy tę funkcję
+  //   }; // Usuwamy tę funkcję
 
-    // Dodaj lokalne tracki
-    if (localStream) {
-      localStream.getTracks().forEach(track => {
-        pc.addTrack(track, localStream);
-      });
-    }
+  //   // Dodaj lokalne tracki // Usuwamy tę funkcję
+  //   if (localStream) { // Usuwamy tę funkcję
+  //     localStream.getTracks().forEach(track => { // Usuwamy tę funkcję
+  //       pc.addTrack(track, localStream); // Usuwamy tę funkcję
+  //     }); // Usuwamy tę funkcję
+  //   } // Usuwamy tę funkcję
 
-    peerConnections.current[userId] = pc;
-    return pc;
-  };
+  //   peerConnections.current[userId] = pc; // Usuwamy tę funkcję
+  //   return pc; // Usuwamy tę funkcję
+  // }; // Usuwamy tę funkcję
 
-  const closePeerConnection = (userId) => {
-    const pc = peerConnections.current[userId];
-    if (pc) {
-      pc.close();
-      delete peerConnections.current[userId];
-      setPeers(prev => {
-        const newPeers = { ...prev };
-        delete newPeers[userId];
-        return newPeers;
-      });
-    }
-  };
+  // const closePeerConnection = (userId) => { // Usuwamy tę funkcję
+  //   const pc = peerConnections.current[userId]; // Usuwamy tę funkcję
+  //   if (pc) { // Usuwamy tę funkcję
+  //     pc.close(); // Usuwamy tę funkcję
+  //     delete peerConnections.current[userId]; // Usuwamy tę funkcję
+  //     setPeers(prev => { // Usuwamy tę funkcję
+  //       const newPeers = { ...prev }; // Usuwamy tę funkcję
+  //       delete newPeers[userId]; // Usuwamy tę funkcję
+  //       return newPeers; // Usuwamy tę funkcję
+  //     }); // Usuwamy tę funkcję
+  //   } // Usuwamy tę funkcję
+  // }; // Usuwamy tę funkcję
 
   // Obsługa signalingu
-  useEffect(() => {
-    socketRef.current = socket;
-    if (!socket) return;
+  // useEffect(() => { // Usuwamy tę funkcję
+  //   socketRef.current = socket; // Usuwamy tę funkcję
+  //   if (!socket) return; // Usuwamy tę funkcję
 
-    // Odbiór offer od nowego peer
-    socket.on('offer', async ({ from, offer }) => {
-      let pc = peerConnections.current[from];
-      if (!pc) pc = createPeerConnection(from);
-      await pc.setRemoteDescription(new RTCSessionDescription(offer));
-      // Dodaj/replace tracki jeśli localStream się zmienił
-      if (localStream) {
-        const senders = pc.getSenders();
-        localStream.getTracks().forEach(track => {
-          const sender = senders.find(s => s.track && s.track.kind === track.kind);
-          if (sender) sender.replaceTrack(track);
-          else pc.addTrack(track, localStream);
-        });
-      }
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      socket.emit('answer', { roomId, to: from, answer });
-    });
+  //   // Odbiór offer od nowego peer // Usuwamy tę funkcję
+  //   socket.on('offer', async ({ from, offer }) => { // Usuwamy tę funkcję
+  //     let pc = peerConnections.current[from]; // Usuwamy tę funkcję
+  //     if (!pc) pc = createPeerConnection(from); // Usuwamy tę funkcję
+  //     await pc.setRemoteDescription(new RTCSessionDescription(offer)); // Usuwamy tę funkcję
+  //     // Dodaj/replace tracki jeśli localStream się zmienił // Usuwamy tę funkcję
+  //     if (localStream) { // Usuwamy tę funkcję
+  //       const senders = pc.getSenders(); // Usuwamy tę funkcję
+  //       localStream.getTracks().forEach(track => { // Usuwamy tę funkcję
+  //         const sender = senders.find(s => s.track && s.track.kind === track.kind); // Usuwamy tę funkcję
+  //         if (sender) sender.replaceTrack(track); // Usuwamy tę funkcję
+  //         else pc.addTrack(track, localStream); // Usuwamy tę funkcję
+  //       }); // Usuwamy tę funkcję
+  //     } // Usuwamy tę funkcję
+  //     const answer = await pc.createAnswer(); // Usuwamy tę funkcję
+  //     await pc.setLocalDescription(answer); // Usuwamy tę funkcję
+  //     socket.emit('answer', { roomId, to: from, answer }); // Usuwamy tę funkcję
+  //   }); // Usuwamy tę funkcję
 
-    // Odbiór answer od peer
-    socket.on('answer', async ({ from, answer }) => {
-      const pc = peerConnections.current[from];
-      if (pc) {
-        await pc.setRemoteDescription(new RTCSessionDescription(answer));
-      }
-    });
+  //   // Odbiór answer od peer // Usuwamy tę funkcję
+  //   socket.on('answer', async ({ from, answer }) => { // Usuwamy tę funkcję
+  //     const pc = peerConnections.current[from]; // Usuwamy tę funkcję
+  //     if (pc) { // Usuwamy tę funkcję
+  //       await pc.setRemoteDescription(new RTCSessionDescription(answer)); // Usuwamy tę funkcję
+  //     } // Usuwamy tę funkcję
+  //   }); // Usuwamy tę funkcję
 
-    // Odbiór ICE
-    socket.on('ice-candidate', async ({ from, candidate }) => {
-      const pc = peerConnections.current[from];
-      if (pc && pc.remoteDescription) {
-        await pc.addIceCandidate(candidate);
-      }
-    });
+  //   // Odbiór ICE // Usuwamy tę funkcję
+  //   socket.on('ice-candidate', async ({ from, candidate }) => { // Usuwamy tę funkcję
+  //     const pc = peerConnections.current[from]; // Usuwamy tę funkcję
+  //     if (pc && pc.remoteDescription) { // Usuwamy tę funkcję
+  //       await pc.addIceCandidate(candidate); // Usuwamy tę funkcję
+  //     } // Usuwamy tę funkcję
+  //   }); // Usuwamy tę funkcję
 
-    // Usuwanie peerów po wyjściu
-    socket.on('user-left', (userId) => {
-      closePeerConnection(userId);
-    });
+  //   // Usuwanie peerów po wyjściu // Usuwamy tę funkcję
+  //   socket.on('user-left', (userId) => { // Usuwamy tę funkcję
+  //     closePeerConnection(userId); // Usuwamy tę funkcję
+  //   }); // Usuwamy tę funkcję
 
-    return () => {
-      socket.off('offer');
-      socket.off('answer');
-      socket.off('ice-candidate');
-      socket.off('user-left');
-    };
-  }, [socket, localStream]);
+  //   return () => { // Usuwamy tę funkcję
+  //     socket.off('offer'); // Usuwamy tę funkcję
+  //     socket.off('answer'); // Usuwamy tę funkcję
+  //     socket.off('ice-candidate'); // Usuwamy tę funkcję
+  //     socket.off('user-left'); // Usuwamy tę funkcję
+  //   }; // Usuwamy tę funkcję
+  // }, [socket, localStream]); // Usuwamy tę funkcję
 
   // Nowy użytkownik łączy się do wszystkich obecnych
-  useEffect(() => {
-    const myId = socket?.id;
-    if (!myId || !socket || !localStream) return;
-    users.forEach(user => {
-      if (user.id !== myId && !peerConnections.current[user.id]) {
-        const pc = createPeerConnection(user.id);
-        pc.createOffer().then(offer => {
-          pc.setLocalDescription(offer);
-          socket.emit('offer', { roomId, to: user.id, offer });
-        });
-      }
-    });
-  }, [users, socket, localStream]);
+  // useEffect(() => { // Usuwamy tę funkcję
+  //   const myId = socket?.id; // Usuwamy tę funkcję
+  //   if (!myId || !socket || !localStream) return; // Usuwamy tę funkcję
+  //   users.forEach(user => { // Usuwamy tę funkcję
+  //     if (user.id !== myId && !peerConnections.current[user.id]) { // Usuwamy tę funkcję
+  //       const pc = createPeerConnection(user.id); // Usuwamy tę funkcję
+  //       pc.createOffer().then(offer => { // Usuwamy tę funkcję
+  //         pc.setLocalDescription(offer); // Usuwamy tę funkcję
+  //         socket.emit('offer', { roomId, to: user.id, offer }); // Usuwamy tę funkcję
+  //       }); // Usuwamy tę funkcję
+  //     } // Usuwamy tę funkcję
+  //   }); // Usuwamy tę funkcję
+  // }, [users, socket, localStream]); // Usuwamy tę funkcję
 
   // Po zmianie localStream aktualizuj tracki u peerów
-  useEffect(() => {
-    Object.entries(peerConnections.current).forEach(([peerId, pc]) => {
-      const senders = pc.getSenders();
-      if (localStream) {
-        localStream.getTracks().forEach(track => {
-          const sender = senders.find(s => s.track && s.track.kind === track.kind);
-          if (sender) sender.replaceTrack(track);
-          else pc.addTrack(track, localStream);
-        });
-      } else {
-        // Wyłącz wszystkie tracki
-        senders.forEach(sender => {
-          if (sender.track) sender.replaceTrack(null);
-        });
-      }
-      // Renegocjacja
-      if (pc.signalingState === 'stable') {
-        pc.createOffer().then(offer => {
-          pc.setLocalDescription(offer);
-          socketRef.current?.emit('offer', { roomId, to: peerId, offer });
-        });
-      }
-    });
-  }, [localStream]);
+  // useEffect(() => { // Usuwamy tę funkcję
+  //   Object.entries(peerConnections.current).forEach(([peerId, pc]) => { // Usuwamy tę funkcję
+  //     const senders = pc.getSenders(); // Usuwamy tę funkcję
+  //     if (localStream) { // Usuwamy tę funkcję
+  //       localStream.getTracks().forEach(track => { // Usuwamy tę funkcję
+  //         const sender = senders.find(s => s.track && s.track.kind === track.kind); // Usuwamy tę funkcję
+  //         if (sender) sender.replaceTrack(track); // Usuwamy tę funkcję
+  //         else pc.addTrack(track, localStream); // Usuwamy tę funkcję
+  //       }); // Usuwamy tę funkcję
+  //     } else { // Usuwamy tę funkcję
+  //       // Wyłącz wszystkie tracki // Usuwamy tę funkcję
+  //       senders.forEach(sender => { // Usuwamy tę funkcję
+  //         if (sender.track) sender.replaceTrack(null); // Usuwamy tę funkcję
+  //       }); // Usuwamy tę funkcję
+  //     } // Usuwamy tę funkcję
+  //     // Renegocjacja // Usuwamy tę funkcję
+  //     if (pc.signalingState === 'stable') { // Usuwamy tę funkcję
+  //       pc.createOffer().then(offer => { // Usuwamy tę funkcję
+  //         pc.setLocalDescription(offer); // Usuwamy tę funkcję
+  //         socketRef.current?.emit('offer', { roomId, to: peerId, offer }); // Usuwamy tę funkcję
+  //       }); // Usuwamy tę funkcję
+  //     } // Usuwamy tę funkcję
+  //   }); // Usuwamy tę funkcję
+  // }, [localStream]); // Usuwamy tę funkcję
 // --- KONIEC NOWEJ LOGIKI KAMEREK I MIKROFONÓW ---
 
   // Wysyłanie wiadomości
@@ -398,7 +390,7 @@ export default function Room() {
 
     // Ustaw player jako iframe
     setDmPlayer(iframe);
-    setPlayerReady(true);
+    // setPlayerReady(true); // Usuwamy tę funkcję
     console.log('Dailymotion iframe created successfully');
 
     // Nasłuchuj na postMessage z iframe
