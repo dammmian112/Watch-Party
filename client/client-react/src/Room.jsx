@@ -202,12 +202,43 @@ export default function Room() {
   // --- CHAT SOCKET HANDLER ---
   useEffect(() => {
     if (!socket) return;
-    const handler = (msg) => {
+    
+    // Handle chat messages
+    const chatHandler = (msg) => {
       setMessages(prev => [...prev, msg]);
     };
-    socket.on('chat-message', handler);
-    return () => socket.off('chat-message', handler);
-  }, [socket]);
+    
+    // Handle user join/leave messages
+    const joinHandler = (userId) => {
+      const joiningUser = users.find(u => u.id === userId);
+      if (joiningUser) {
+        setMessages(prev => [...prev, {
+          userName: 'System',
+          message: `${joiningUser.userName} dołączył do pokoju`
+        }]);
+      }
+    };
+    
+    const leaveHandler = (userId) => {
+      const leavingUser = users.find(u => u.id === userId);
+      if (leavingUser) {
+        setMessages(prev => [...prev, {
+          userName: 'System',
+          message: `${leavingUser.userName} opuścił pokój`
+        }]);
+      }
+    };
+    
+    socket.on('chat-message', chatHandler);
+    socket.on('user-joined', joinHandler);
+    socket.on('user-left', leaveHandler);
+    
+    return () => {
+      socket.off('chat-message', chatHandler);
+      socket.off('user-joined', joinHandler);
+      socket.off('user-left', leaveHandler);
+    };
+  }, [socket, users]);
 
   return (
     <Box sx={{ minHeight: '100vh', width: '100vw', bgcolor: 'background.default', background: 'linear-gradient(135deg, #23283a 0%, #181c24 100%)', ...bitcountFont }}>
