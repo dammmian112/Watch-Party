@@ -288,11 +288,9 @@ export default function Room() {
       const sec = videoTagRef.current.currentTime;
       socket?.emit('player-action', { roomId, action: 'seek', time: sec });
     } else if (playerData.type === 'dailymotion' && playerInstance) {
-      // Spróbuj pobrać czas z iframe Dailymotion przez postMessage
       playerInstance.contentWindow.postMessage({ command: 'time' }, '*');
-      // Odbierz odpowiedź w handleMessage (poniżej)
     } else {
-      alert('Synchronizacja obsługiwana tylko dla mp4 i Dailymotion');
+      alert('Synchronizacja nie jest dostępna dla tego serwisu. Obsługiwane: mp4, Dailymotion.');
     }
   };
   // --- Dla Dailymotion: nasłuchuj na postMessage z czasem ---
@@ -513,6 +511,16 @@ export default function Room() {
               >
                 Idź do
               </Button>
+              <Button
+                onClick={handleSync}
+                variant="contained"
+                color="secondary"
+                size="medium"
+                startIcon={<SyncIcon />}
+                sx={{ minWidth: { xs: '100%', sm: 80 }, py: 1, px: 2.5, fontWeight: 700, fontSize: 15, borderRadius: 2, boxShadow: 'none', textTransform: 'none', transition: '0.2s', ...bitcountFont, '&:hover': { bgcolor: '#ffb300', color: '#181c24', boxShadow: 'none' } }}
+              >
+                Synchronizuj
+              </Button>
               {/* --- SEEK --- */}
               <TextField
                 size="small"
@@ -569,16 +577,12 @@ export default function Room() {
                     return;
                   }
                   console.log('Final seconds to seek:', sec);
+                  if (playerData.type !== 'mp4' && playerData.type !== 'dailymotion') {
+                    alert('Funkcja "Idź do minuty" nie jest dostępna dla tego serwisu. Obsługiwane: mp4, Dailymotion.');
+                    return;
+                  }
                   if (sec > 0) {
-                    console.log('Seeking to seconds:', sec);
-                    console.log('playerInstance exists:', !!playerInstance);
-                    console.log('videoId exists:', !!videoId);
-                    
-                    // Seek locally
                     seekToTime(sec);
-                    
-                    // Sync to all users
-                    console.log('Emitting socket player-action with time:', sec);
                     socket?.emit('player-action', { roomId, action: 'seek', time: sec });
                   } else {
                     console.log('Invalid seconds value:', sec);
@@ -737,12 +741,6 @@ export default function Room() {
               >
                 {cameraMode === 'fixed' ? <OpenInNewIcon /> : <CloseIcon />}
               </IconButton>
-            </Box>
-            {/* Przycisk Synchronizuj */}
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-              <Button onClick={handleSync} variant="contained" color="secondary" startIcon={<SyncIcon />} sx={{ ...bitcountFont }}>
-                Synchronizuj
-              </Button>
             </Box>
           </Paper>
         </Box>
