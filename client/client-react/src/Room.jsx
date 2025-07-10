@@ -661,14 +661,17 @@ export default function Room() {
           {/* Chat tylko w trybie zwykłym */}
           {!cinemaMode && (
             <>
+              <IconButton onClick={() => setChatOpen(v => !v)} color="primary" sx={{ mb: 1, bgcolor: 'background.paper', boxShadow: 2, alignSelf: 'flex-end', ...bitcountFont }}>
+                <ChatIcon />
+              </IconButton>
               <Fade in={chatOpen}>
-                <Paper elevation={6} sx={{ p: 2, borderRadius: 5, bgcolor: 'rgba(35,40,58,0.97)', minHeight: 240, height: '100%', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.25)', display: 'flex', flexDirection: 'column', ...bitcountFont }}>
+                <Paper elevation={6} sx={{ p: 2, borderRadius: 5, bgcolor: 'rgba(35,40,58,0.97)', minHeight: 240, maxHeight: 'calc(100vh - 120px)', height: '100%', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.25)', display: 'flex', flexDirection: 'column', ...bitcountFont }}>
                   <Typography variant="h6" gutterBottom sx={{ color: 'white', letterSpacing: 1, fontWeight: 600, ...bitcountFont, display: 'flex', alignItems: 'center', gap: 1 }}>
                     <ChatIcon sx={{ mr: 0, fontSize: 28, verticalAlign: 'middle' }} />
                     <span style={{ display: 'inline-block', verticalAlign: 'middle', lineHeight: 1 }}>Czat</span>
                   </Typography>
                   <Divider sx={{ mb: 2, bgcolor: 'primary.main', opacity: 0.2 }} />
-                  <Box sx={{ flex: 1, overflowY: 'auto', mb: 2, ...bitcountFont }}>
+                  <Box sx={{ flex: 1, overflowY: 'auto', mb: 2, maxHeight: '100%', ...bitcountFont }}>
                     {messages.map((msg, i) => (
                       msg.userName === 'System' ? (
                         <Box key={i} sx={{ mb: 1, pl: 1 }}>
@@ -699,9 +702,6 @@ export default function Room() {
                   </Box>
                 </Paper>
               </Fade>
-              <IconButton onClick={() => setChatOpen(v => !v)} color="primary" sx={{ mt: 1, bgcolor: 'background.paper', boxShadow: 2, alignSelf: 'flex-end', ...bitcountFont }}>
-                <ChatIcon />
-              </IconButton>
             </>
           )}
         </Box>
