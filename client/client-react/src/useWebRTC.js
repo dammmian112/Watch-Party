@@ -43,7 +43,11 @@ export default function useWebRTC() {
     if (cameraOn || micOn) {
       const constraints = {
         video: cameraOn,
-        audio: micOn
+        audio: micOn ? {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } : false
       };
       console.log('getUserMedia constraints:', constraints);
       navigator.mediaDevices.getUserMedia(constraints).then(stream => {

@@ -20,7 +20,7 @@ function PeerVideo({ stream, userName, cinemaMode = false, width = 300, height =
   
   return (
     <Box sx={{ width, height, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'stretch', ...sx }}>
-      <video ref={videoRef} autoPlay playsInline style={videoStyle} />
+      <video ref={videoRef} autoPlay playsInline muted={userName.endsWith(' (Ty)')} style={videoStyle} />
       <Typography 
         align="center" 
         sx={{ 
