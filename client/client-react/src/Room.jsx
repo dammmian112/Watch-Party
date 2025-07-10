@@ -545,9 +545,6 @@ export default function Room() {
             </Box>
             {/* Player placeholder */}
             <Box ref={playerRef} sx={{ width: '100%', aspectRatio: '16/9', bgcolor: '#111', borderRadius: 3, mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', position: 'relative', overflow: 'hidden' }}>
-              {(!playerData.url || playerData.type === null) && (
-                <Typography variant="h6">Tu będzie player</Typography>
-              )}
               {playerData.url && playerData.type === 'dailymotion' && videoId && (
                 <iframe
                   src={`https://www.dailymotion.com/embed/video/${videoId}?autoplay=0&mute=0&controls=1&info=0&logo=0&related=0&start=0`}
