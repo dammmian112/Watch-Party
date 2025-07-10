@@ -550,6 +550,7 @@ export default function Room() {
             {!cinemaMode && (
               <Box sx={{ 
                 display: 'flex', 
+                flexDirection: 'row',
                 gap: 2, 
                 flexWrap: 'wrap', 
                 justifyContent: 'center', 
@@ -562,11 +563,11 @@ export default function Room() {
                 maxHeight: 'auto',
                 overflow: 'visible'
               }}>
-                <PeerVideo stream={localStream} userName={userName + ' (Ty)'} cinemaMode={cinemaMode} />
+                <PeerVideo stream={localStream} userName={userName + ' (Ty)'} cinemaMode={cinemaMode} width={320} height={240} />
                 {Object.entries(peers).map(([peerId, stream]) => {
                   const userObj = users.find(u => u.id === peerId);
                   const label = userObj ? userObj.userName : peerId;
-                  return <PeerVideo key={peerId} stream={stream} userName={label} cinemaMode={cinemaMode} />;
+                  return <PeerVideo key={peerId} stream={stream} userName={label} cinemaMode={cinemaMode} width={320} height={240} />;
                 })}
               </Box>
             )}
@@ -644,15 +645,13 @@ export default function Room() {
         }}>
           {/* Kamerki tylko w trybie kinowym */}
           {cinemaMode && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 2 }}>
-              {[{ stream: localStream, label: userName + ' (Ty)', id: 'local' }, ...Object.entries(peers).map(([peerId, stream]) => {
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 2, justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+              <PeerVideo stream={localStream} userName={userName + ' (Ty)'} cinemaMode={cinemaMode} width={320} height={240} />
+              {Object.entries(peers).map(([peerId, stream]) => {
                 const userObj = users.find(u => u.id === peerId);
-                return { stream, label: userObj ? userObj.userName : peerId, id: peerId };
-              })].map((peer, idx) => (
-                <ResizableCameraBox key={peer.id} defaultHeight={140} minHeight={80} maxHeight={320}>
-                  <PeerVideo stream={peer.stream} userName={peer.label} cinemaMode={cinemaMode} />
-                </ResizableCameraBox>
-              ))}
+                const label = userObj ? userObj.userName : peerId;
+                return <PeerVideo key={peerId} stream={stream} userName={label} cinemaMode={cinemaMode} width={320} height={240} />;
+              })}
             </Box>
           )}
           {/* Chat tylko w trybie zwykłym */}
