@@ -552,7 +552,7 @@ export default function Room() {
                 display: 'flex', 
                 flexDirection: 'row',
                 gap: 2, 
-                flexWrap: 'wrap', 
+                flexWrap: 'nowrap', 
                 justifyContent: 'center', 
                 alignItems: 'center', 
                 mt: 2, 
@@ -560,14 +560,16 @@ export default function Room() {
                 bgcolor: 'rgba(35,40,58,0.3)', 
                 borderRadius: 3, 
                 border: '1px solid rgba(255,255,255,0.1)',
-                maxHeight: 'auto',
-                overflow: 'visible'
+                maxHeight: 320,
+                overflowX: 'auto',
+                overflowY: 'hidden',
+                width: '100%'
               }}>
-                <PeerVideo stream={localStream} userName={userName + ' (Ty)'} cinemaMode={cinemaMode} width={320} height={240} />
+                <PeerVideo stream={localStream} userName={userName + ' (Ty)'} cinemaMode={cinemaMode} width={300} height={300} />
                 {Object.entries(peers).map(([peerId, stream]) => {
                   const userObj = users.find(u => u.id === peerId);
                   const label = userObj ? userObj.userName : peerId;
-                  return <PeerVideo key={peerId} stream={stream} userName={label} cinemaMode={cinemaMode} width={320} height={240} />;
+                  return <PeerVideo key={peerId} stream={stream} userName={label} cinemaMode={cinemaMode} width={300} height={300} />;
                 })}
               </Box>
             )}
@@ -646,11 +648,11 @@ export default function Room() {
           {/* Kamerki tylko w trybie kinowym */}
           {cinemaMode && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 2, justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-              <PeerVideo stream={localStream} userName={userName + ' (Ty)'} cinemaMode={cinemaMode} width={320} height={240} />
+              <PeerVideo stream={localStream} userName={userName + ' (Ty)'} cinemaMode={cinemaMode} width={300} height={300} sx={{ maxWidth: '100%' }} />
               {Object.entries(peers).map(([peerId, stream]) => {
                 const userObj = users.find(u => u.id === peerId);
                 const label = userObj ? userObj.userName : peerId;
-                return <PeerVideo key={peerId} stream={stream} userName={label} cinemaMode={cinemaMode} width={320} height={240} />;
+                return <PeerVideo key={peerId} stream={stream} userName={label} cinemaMode={cinemaMode} width={300} height={300} sx={{ maxWidth: '100%' }} />;
               })}
             </Box>
           )}
