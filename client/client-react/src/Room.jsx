@@ -340,6 +340,7 @@ export default function Room() {
           </Box>
         </Toolbar>
       </AppBar>
+      {/* --- PLAYER + KAMERKI + CHAT --- */}
       <Box sx={{ 
         width: '100%', 
         maxWidth: cinemaMode ? '100%' : '1800px', 
@@ -624,73 +625,73 @@ export default function Room() {
             </Box>
           </Paper>
         </Box>
-        {/* Kamerki w trybie kinowym - panel po prawej */}
-        {cinemaMode && (
-          <Box sx={{
-            flex: '0 0 340px',
-            minWidth: 220,
-            maxWidth: 400,
-            height: '100vh',
-            overflowY: 'auto',
-            bgcolor: 'rgba(24,28,36,0.97)',
-            borderLeft: '2px solid #23283a',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'stretch',
-            gap: 2,
-            p: 2,
-            boxSizing: 'border-box',
-            zIndex: 10
-          }}>
-            {/* Resizable kamerki */}
-            {[{ stream: localStream, label: userName + ' (Ty)', id: 'local' }, ...Object.entries(peers).map(([peerId, stream]) => {
-              const userObj = users.find(u => u.id === peerId);
-              return { stream, label: userObj ? userObj.userName : peerId, id: peerId };
-            })].map((peer, idx) => (
-              <ResizableCameraBox key={peer.id} defaultHeight={140} minHeight={80} maxHeight={320}>
-                <PeerVideo stream={peer.stream} userName={peer.label} cinemaMode={cinemaMode} />
-              </ResizableCameraBox>
-            ))}
-          </Box>
-        )}
-      </Box>
-      {/* Czat */}
-      <Box sx={{ flex: 1, minWidth: 320, maxWidth: 500, display: cinemaMode ? 'none' : 'flex', flexDirection: 'column', gap: 3, alignItems: 'stretch', ...bitcountFont }}>
-        <Fade in={chatOpen}>
-          <Paper elevation={6} sx={{ p: 2, borderRadius: 5, bgcolor: 'rgba(35,40,58,0.97)', minHeight: 480, height: '100%', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.25)', display: 'flex', flexDirection: 'column', ...bitcountFont }}>
-            <Typography variant="h6" gutterBottom sx={{ color: 'white', letterSpacing: 1, fontWeight: 600, ...bitcountFont, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <ChatIcon sx={{ mr: 0, fontSize: 28, verticalAlign: 'middle' }} />
-              <span style={{ display: 'inline-block', verticalAlign: 'middle', lineHeight: 1 }}>Czat</span>
-            </Typography>
-            <Divider sx={{ mb: 2, bgcolor: 'primary.main', opacity: 0.2 }} />
-            <Box sx={{ flex: 1, overflowY: 'auto', mb: 2, ...bitcountFont }}>
-              {messages.map((msg, i) => (
-                <Box key={i} sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1, ...bitcountFont }}>
-                  <Avatar sx={{ width: 28, height: 28, bgcolor: 'primary.main', fontWeight: 700, ...bitcountFont }}>{msg.userName ? msg.userName[0] : '?'}</Avatar>
-                  <Paper sx={{ p: 1, bgcolor: 'background.paper', borderRadius: 2, ...bitcountFont }}><b>{msg.userName ? msg.userName : 'Gość'}:</b> {msg.message}</Paper>
-                </Box>
+        {/* Panel boczny: kamerki (w kinowym) + chat */}
+        <Box sx={{
+          flex: '0 0 340px',
+          minWidth: 220,
+          maxWidth: 400,
+          height: '100vh',
+          overflowY: 'auto',
+          bgcolor: 'rgba(24,28,36,0.97)',
+          borderLeft: '2px solid #23283a',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'stretch',
+          gap: 2,
+          p: 2,
+          boxSizing: 'border-box',
+          zIndex: 10
+        }}>
+          {/* Kamerki tylko w trybie kinowym */}
+          {cinemaMode && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 2 }}>
+              {[{ stream: localStream, label: userName + ' (Ty)', id: 'local' }, ...Object.entries(peers).map(([peerId, stream]) => {
+                const userObj = users.find(u => u.id === peerId);
+                return { stream, label: userObj ? userObj.userName : peerId, id: peerId };
+              })].map((peer, idx) => (
+                <ResizableCameraBox key={peer.id} defaultHeight={140} minHeight={80} maxHeight={320}>
+                  <PeerVideo stream={peer.stream} userName={peer.label} cinemaMode={cinemaMode} />
+                </ResizableCameraBox>
               ))}
             </Box>
-            <Box sx={{ display: 'flex', gap: 1, ...bitcountFont }}>
-              <TextField
-                size="small"
-                fullWidth
-                placeholder="Napisz wiadomość..."
-                value={message}
-                onChange={e => setMessage(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && sendMessage()}
-                sx={{ bgcolor: 'background.paper', borderRadius: 1, ...bitcountFont, input: { ...bitcountFont }, label: { ...bitcountFont } }}
-                InputLabelProps={{ style: { ...bitcountFont } }}
-              />
-              <IconButton color="primary" onClick={sendMessage} sx={{ ...bitcountFont }}>
-                <SendIcon />
-              </IconButton>
-            </Box>
-          </Paper>
-        </Fade>
-        <IconButton onClick={() => setChatOpen(v => !v)} color="primary" sx={{ mt: 1, bgcolor: 'background.paper', boxShadow: 2, alignSelf: 'flex-end', ...bitcountFont }}>
-          <ChatIcon />
-        </IconButton>
+          )}
+          {/* Chat zawsze w panelu bocznym */}
+          <Fade in={chatOpen}>
+            <Paper elevation={6} sx={{ p: 2, borderRadius: 5, bgcolor: 'rgba(35,40,58,0.97)', minHeight: 240, height: '100%', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.25)', display: 'flex', flexDirection: 'column', ...bitcountFont }}>
+              <Typography variant="h6" gutterBottom sx={{ color: 'white', letterSpacing: 1, fontWeight: 600, ...bitcountFont, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <ChatIcon sx={{ mr: 0, fontSize: 28, verticalAlign: 'middle' }} />
+                <span style={{ display: 'inline-block', verticalAlign: 'middle', lineHeight: 1 }}>Czat</span>
+              </Typography>
+              <Divider sx={{ mb: 2, bgcolor: 'primary.main', opacity: 0.2 }} />
+              <Box sx={{ flex: 1, overflowY: 'auto', mb: 2, ...bitcountFont }}>
+                {messages.map((msg, i) => (
+                  <Box key={i} sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1, ...bitcountFont }}>
+                    <Avatar sx={{ width: 28, height: 28, bgcolor: 'primary.main', fontWeight: 700, ...bitcountFont }}>{msg.userName ? msg.userName[0] : '?'}</Avatar>
+                    <Paper sx={{ p: 1, bgcolor: 'background.paper', borderRadius: 2, ...bitcountFont }}><b>{msg.userName ? msg.userName : 'Gość'}:</b> {msg.message}</Paper>
+                  </Box>
+                ))}
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1, ...bitcountFont }}>
+                <TextField
+                  size="small"
+                  fullWidth
+                  placeholder="Napisz wiadomość..."
+                  value={message}
+                  onChange={e => setMessage(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && sendMessage()}
+                  sx={{ bgcolor: 'background.paper', borderRadius: 1, ...bitcountFont, input: { ...bitcountFont }, label: { ...bitcountFont } }}
+                  InputLabelProps={{ style: { ...bitcountFont } }}
+                />
+                <IconButton color="primary" onClick={sendMessage} sx={{ ...bitcountFont }}>
+                  <SendIcon />
+                </IconButton>
+              </Box>
+            </Paper>
+          </Fade>
+          <IconButton onClick={() => setChatOpen(v => !v)} color="primary" sx={{ mt: 1, bgcolor: 'background.paper', boxShadow: 2, alignSelf: 'flex-end', ...bitcountFont }}>
+            <ChatIcon />
+          </IconButton>
+        </Box>
       </Box>
     </Box>
   );
