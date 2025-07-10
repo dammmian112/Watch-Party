@@ -33,7 +33,7 @@ io.on('connection', (socket) => {
       rooms[roomId].push({ id: socket.id, userName });
       
       // Powiadom innych użytkowników o nowym użytkowniku
-      socket.to(roomId).emit('user-joined', { id: socket.id, userName });
+      io.to(roomId).emit('user-joined', { id: socket.id, userName });
       
       // Wyślij listę użytkowników do wszystkich
       io.to(roomId).emit('users-update', rooms[roomId]);
