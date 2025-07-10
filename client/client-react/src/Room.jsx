@@ -345,11 +345,10 @@ export default function Room() {
         width: '100%', 
         maxWidth: cinemaMode ? '100%' : '1800px', 
         mx: 'auto', 
-        py: cinemaMode ? 0 : 2, 
-        px: cinemaMode ? 0 : 2, 
-        display: 'flex', 
-        flexDirection: cinemaMode ? 'row' : { xs: 'column', md: 'row' }, 
-        gap: cinemaMode ? 0 : 4, 
+        p: 0,
+        display: 'flex',
+        flexDirection: cinemaMode ? 'row' : { xs: 'column', md: 'row' },
+        gap: 0,
         height: '100vh',
         minHeight: 0,
         overflow: cinemaMode ? 'hidden' : 'visible',
@@ -361,7 +360,7 @@ export default function Room() {
           display: 'flex', 
           flexDirection: 'column', 
           alignItems: 'center', 
-          gap: cinemaMode ? 1 : 3, 
+          gap: 0,
           minWidth: 0, 
           minHeight: 0,
           height: '100%',
@@ -379,6 +378,9 @@ export default function Room() {
             flexDirection: 'column', 
             justifyContent: 'flex-start', 
             p: cinemaMode ? 1 : 2, 
+            height: '100%',
+            minHeight: 0,
+            boxSizing: 'border-box',
             ...bitcountFont 
           }}>
             {/* --- INPUTS NAD PLAYEREM --- */}
@@ -647,7 +649,7 @@ export default function Room() {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'stretch',
-          gap: 2,
+          gap: 0,
           p: 2,
           boxSizing: 'border-box',
           zIndex: 10
@@ -670,7 +672,7 @@ export default function Room() {
                 <ChatIcon />
               </IconButton>
               <Fade in={chatOpen}>
-                <Paper elevation={6} sx={{ p: 2, borderRadius: 5, bgcolor: 'rgba(35,40,58,0.97)', minHeight: 0, maxHeight: '100%', height: '100%', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.25)', display: 'flex', flexDirection: 'column', overflow: 'auto', ...bitcountFont }}>
+                <Paper elevation={6} sx={{ p: 2, borderRadius: 5, bgcolor: 'rgba(35,40,58,0.97)', minHeight: 0, maxHeight: '100%', height: '100%', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.25)', display: 'flex', flexDirection: 'column', overflow: 'auto', boxSizing: 'border-box', ...bitcountFont }}>
                   <Typography variant="h6" gutterBottom sx={{ color: 'white', letterSpacing: 1, fontWeight: 600, ...bitcountFont, display: 'flex', alignItems: 'center', gap: 1 }}>
                     <ChatIcon sx={{ mr: 0, fontSize: 28, verticalAlign: 'middle' }} />
                     <span style={{ display: 'inline-block', verticalAlign: 'middle', lineHeight: 1 }}>Czat</span>
