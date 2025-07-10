@@ -15,6 +15,8 @@ import { useNavigate } from 'react-router-dom';
 import useWebRTC from './useWebRTC';
 import PeerVideo from './PeerVideo';
 import { useCallback } from 'react';
+import PauseIcon from '@mui/icons-material/Pause';
+import SyncIcon from '@mui/icons-material/Sync';
 
 const bitcountFont = {
   fontFamily: '"Bitcount Grid Double", system-ui',
@@ -134,6 +136,8 @@ export default function Room() {
   const [currentTime, setCurrentTime] = useState(0);
   const [lastSeekTime, setLastSeekTime] = useState(0);
   const [manualTime, setManualTime] = useState('');
+  // Dodaj ref do <video>
+  const videoTagRef = useRef();
 
   // Minimalny czat (tylko lokalny, bo globalny jest przez socket w useWebRTC)
   const sendMessage = () => {
@@ -262,14 +266,59 @@ export default function Room() {
     socket.on('player-action', ({ action, time, fromUser }) => {
       console.log('Received player-action:', { action, time, fromUser });
       if (action === 'seek' && typeof time === 'number') {
-        console.log('Seeking to time from socket:', time);
         setCurrentTime(time);
         setLastSeekTime(time);
         seekToTime(time);
       }
+      if (action === 'pause') {
+        // Pauzuj playera
+        if (playerData.type === 'mp4' && videoTagRef.current) {
+          videoTagRef.current.pause();
+        } else if (playerData.type === 'dailymotion' && playerInstance) {
+          playerInstance.contentWindow.postMessage({ command: 'pause' }, '*');
+        }
+      }
     });
     return () => socket.off('player-action');
-  }, [socket, playerInstance, videoId]);
+  }, [socket, playerInstance, videoId, playerData.type]);
+
+  // Funkcja synchronizująca czas playera
+  const handleSync = () => {
+    if (playerData.type === 'mp4' && videoTagRef.current) {
+      const sec = videoTagRef.current.currentTime;
+      socket?.emit('player-action', { roomId, action: 'seek', time: sec });
+    } else if (playerData.type === 'dailymotion' && playerInstance) {
+      // Spróbuj pobrać czas z iframe Dailymotion przez postMessage
+      playerInstance.contentWindow.postMessage({ command: 'time' }, '*');
+      // Odbierz odpowiedź w handleMessage (poniżej)
+    } else {
+      alert('Synchronizacja obsługiwana tylko dla mp4 i Dailymotion');
+    }
+  };
+  // --- Dla Dailymotion: nasłuchuj na postMessage z czasem ---
+  useEffect(() => {
+    if (!playerInstance || playerData.type !== 'dailymotion') return;
+    const handleMessage = (event) => {
+      if (event.source !== playerInstance.contentWindow) return;
+      if (!event.data || typeof event.data !== 'object') return;
+      if (event.data.event === 'timeupdate' && typeof event.data.time === 'number') {
+        // Synchronizuj do tego czasu
+        socket?.emit('player-action', { roomId, action: 'seek', time: event.data.time });
+      }
+      if (event.data.event === 'pause') {
+        socket?.emit('player-action', { roomId, action: 'pause' });
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [playerInstance, playerData.type, socket, roomId]);
+  // --- Obsługa pauzy dla mp4 ---
+  const handlePause = () => {
+    if (playerData.type === 'mp4' && videoTagRef.current) {
+      videoTagRef.current.pause();
+      socket?.emit('player-action', { roomId, action: 'pause' });
+    }
+  };
 
   // --- CHAT SOCKET HANDLER ---
   useEffect(() => {
@@ -547,6 +596,7 @@ export default function Room() {
             <Box ref={playerRef} sx={{ width: '100%', aspectRatio: '16/9', bgcolor: '#111', borderRadius: 3, mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', position: 'relative', overflow: 'hidden' }}>
               {playerData.url && playerData.type === 'dailymotion' && videoId && (
                 <iframe
+                  ref={playerInstance ? undefined : (el => setPlayerInstance(el))}
                   src={`https://www.dailymotion.com/embed/video/${videoId}?autoplay=0&mute=0&controls=1&info=0&logo=0&related=0&start=0`}
                   width="100%"
                   height="100%"
@@ -594,7 +644,7 @@ export default function Room() {
                 />
               )}
               {playerData.url && playerData.type === 'mp4' && (
-                <video src={playerData.url} width="100%" height="100%" controls style={{ background: '#000', borderRadius: 8 }} />
+                <video ref={videoTagRef} src={playerData.url} width="100%" height="100%" controls style={{ background: '#000', borderRadius: 8 }} onPause={handlePause} />
               )}
               {playerData.url && playerData.type === 'mega' && (
                 <Box sx={{ color: 'white', p: 2, textAlign: 'center' }}>
@@ -687,6 +737,12 @@ export default function Room() {
               >
                 {cameraMode === 'fixed' ? <OpenInNewIcon /> : <CloseIcon />}
               </IconButton>
+            </Box>
+            {/* Przycisk Synchronizuj */}
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+              <Button onClick={handleSync} variant="contained" color="secondary" startIcon={<SyncIcon />} sx={{ ...bitcountFont }}>
+                Synchronizuj
+              </Button>
             </Box>
           </Paper>
         </Box>
