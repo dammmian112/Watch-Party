@@ -52,14 +52,14 @@ io.on('connection', (socket) => {
   });
 
   // Synchronizacja linku do filmu Dailymotion
-  socket.on('set-dm-url', ({ roomId, dmUrl }) => {
+  socket.on('set-player-url', ({ roomId, url, type }) => {
     if (!playerStates[roomId]) playerStates[roomId] = { playing: false, time: 0 };
-    playerStates[roomId].dmUrl = dmUrl;
-    io.to(roomId).emit('dm-url', dmUrl);
+    playerStates[roomId].playerUrl = { url, type };
+    io.to(roomId).emit('player-url', { url, type });
   });
-  socket.on('get-dm-url', ({ roomId }) => {
-    if (playerStates[roomId] && playerStates[roomId].dmUrl) {
-      socket.emit('dm-url', playerStates[roomId].dmUrl);
+  socket.on('get-player-url', ({ roomId }) => {
+    if (playerStates[roomId] && playerStates[roomId].playerUrl) {
+      socket.emit('player-url', playerStates[roomId].playerUrl);
     }
   });
 

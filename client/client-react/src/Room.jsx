@@ -94,6 +94,17 @@ function ResizableCameraBox({ children, defaultHeight = 140, minHeight = 80, max
   );
 }
 
+function detectPlayerType(url) {
+  if (!url) return null;
+  if (/dailymotion\.com\/video\//.test(url)) return 'dailymotion';
+  if (/drive\.google\.com\/file\//.test(url)) return 'gdrive';
+  if (/mega\.nz\//.test(url)) return 'mega';
+  if (/cda\.pl\//.test(url)) return 'cda';
+  if (/mp4upload\.com\//.test(url)) return 'mp4upload';
+  if (/\.(mp4|webm|ogg)(\?.*)?$/.test(url)) return 'mp4';
+  return 'unknown';
+}
+
 export default function Room() {
   const navigate = useNavigate();
   const {
@@ -116,9 +127,9 @@ export default function Room() {
   const [cinemaMode, setCinemaMode] = useState(false);
   const [cameraMode, setCameraMode] = useState('fixed');
   const playerRef = useRef();
-  const [dmUrl, setDmUrl] = useState('');
-  const [dmInput, setDmInput] = useState('');
-  const [dmPlayer, setDmPlayer] = useState(null);
+  const [playerInput, setPlayerInput] = useState('');
+  const [playerData, setPlayerData] = useState({ url: '', type: null });
+  const [playerInstance, setPlayerInstance] = useState(null);
   const [videoId, setVideoId] = useState('');
   const [currentTime, setCurrentTime] = useState(0);
   const [lastSeekTime, setLastSeekTime] = useState(0);
@@ -142,41 +153,29 @@ export default function Room() {
   // Synchronizacja linku do filmu Dailymotion
   useEffect(() => {
     if (!socket) return;
-    socket.on('dm-url', (url) => {
-      console.log('Received dm-url from server:', url);
-      setDmUrl(url);
-      setDmInput(url);
-      // Wyciągnij video ID z URL
-      const match = url.match(/\/video\/([a-zA-Z0-9]+)/);
-      console.log('dm-url match result:', match);
-      if (match) {
-        const extractedVideoId = match[1];
-        console.log('Setting videoId from dm-url:', extractedVideoId);
-        setVideoId(extractedVideoId);
+    socket.on('player-url', (data) => {
+      console.log('Received player-url from server:', data);
+      setPlayerData(data);
+      setPlayerInput(data.url);
+      if (data.type === 'dailymotion') {
+        const match = data.url.match(/\/video\/([a-zA-Z0-9]+)/);
+        if (match) setVideoId(match[1]);
       }
     });
     // Po wejściu do pokoju pobierz aktualny link
-    console.log('Requesting current dm-url for room:', roomId);
-    socket.emit('get-dm-url', { roomId });
-    return () => socket.off('dm-url');
+    socket.emit('get-player-url', { roomId });
+    return () => socket.off('player-url');
   }, [socket, roomId]);
 
   // Obsługa Dailymotion
-  const handleSetDm = () => {
-    console.log('handleSetDm called with dmInput:', dmInput);
-    if (dmInput && socket) {
-      setDmUrl(dmInput);
-      setDmInput(dmInput);
-      socket.emit('set-dm-url', { roomId, dmUrl: dmInput });
-      // Wyciągnij video ID z URL
-      const match = dmInput.match(/\/video\/([a-zA-Z0-9]+)/);
-      console.log('URL match result:', match);
-      if (match) {
-        const extractedVideoId = match[1];
-        console.log('Extracted video ID:', extractedVideoId);
-        setVideoId(extractedVideoId);
-      } else {
-        console.log('No video ID found in URL:', dmInput);
+  const handleSetPlayer = () => {
+    if (playerInput && socket) {
+      const type = detectPlayerType(playerInput);
+      setPlayerData({ url: playerInput, type });
+      socket.emit('set-player-url', { roomId, url: playerInput, type });
+      if (type === 'dailymotion') {
+        const match = playerInput.match(/\/video\/([a-zA-Z0-9]+)/);
+        if (match) setVideoId(match[1]);
       }
     }
   };
@@ -192,7 +191,7 @@ export default function Room() {
     console.log('Creating Dailymotion player for videoId:', videoId);
     
     // Wyczyść poprzedni player
-    if (dmPlayer) setDmPlayer(null);
+    if (playerInstance) setPlayerInstance(null);
     
     // Użyj prostego embed URL z start=0
     const embedUrl = `https://www.dailymotion.com/embed/video/${videoId}?autoplay=0&mute=0&controls=1&info=0&logo=0&related=0&start=0`;
@@ -211,7 +210,7 @@ export default function Room() {
     // Wyczyść container i dodaj iframe
     playerRef.current.innerHTML = '';
     playerRef.current.appendChild(iframe);
-    setDmPlayer(iframe);
+    setPlayerInstance(iframe);
     
     console.log('Dailymotion iframe created and added to player');
     
@@ -236,14 +235,14 @@ export default function Room() {
     return () => {
       window.removeEventListener('message', handleMessage);
       if (playerRef.current) playerRef.current.innerHTML = '';
-      setDmPlayer(null);
+      setPlayerInstance(null);
     };
   }, [videoId]);
 
   // Funkcja do seekowania w playerze
   const seekToTime = (seconds) => {
     console.log('seekToTime called with seconds:', seconds);
-    if (!dmPlayer || !videoId) {
+    if (!playerInstance || !videoId) {
       console.log('No player or videoId available');
       return;
     }
@@ -253,7 +252,7 @@ export default function Room() {
     console.log('New embed URL with start time:', newEmbedUrl);
     
     // Zaktualizuj src iframe
-    dmPlayer.src = newEmbedUrl;
+    playerInstance.src = newEmbedUrl;
     console.log('Player src updated to seek to time:', seconds);
   };
 
@@ -270,7 +269,7 @@ export default function Room() {
       }
     });
     return () => socket.off('player-action');
-  }, [socket, dmPlayer, videoId]);
+  }, [socket, playerInstance, videoId]);
 
   // --- CHAT SOCKET HANDLER ---
   useEffect(() => {
@@ -400,10 +399,10 @@ export default function Room() {
             }}>
               <TextField
                 size="small"
-                placeholder="Wklej link do filmu Dailymotion..."
-                value={dmInput}
-                onChange={e => setDmInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSetDm()}
+                placeholder="Wklej link do filmu lub serwisu (Dailymotion, GDrive, Mega, CDA, mp4upload, mp4)..."
+                value={playerInput}
+                onChange={e => setPlayerInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSetPlayer()}
                 sx={{ 
                   bgcolor: 'rgba(35,40,58,0.97)', 
                   borderRadius: 2, 
@@ -439,7 +438,7 @@ export default function Room() {
                 InputLabelProps={{ style: { ...bitcountFont } }}
               />
               <Button
-                onClick={handleSetDm}
+                onClick={handleSetPlayer}
                 variant="contained"
                 color="primary"
                 size="medium"
@@ -523,7 +522,7 @@ export default function Room() {
                   console.log('Final seconds to seek:', sec);
                   if (sec > 0) {
                     console.log('Seeking to seconds:', sec);
-                    console.log('dmPlayer exists:', !!dmPlayer);
+                    console.log('playerInstance exists:', !!playerInstance);
                     console.log('videoId exists:', !!videoId);
                     
                     // Seek locally
@@ -546,8 +545,69 @@ export default function Room() {
             </Box>
             {/* Player placeholder */}
             <Box ref={playerRef} sx={{ width: '100%', aspectRatio: '16/9', bgcolor: '#111', borderRadius: 3, mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', position: 'relative', overflow: 'hidden' }}>
-              {!videoId && (
+              {(!playerData.url || playerData.type === null) && (
                 <Typography variant="h6">Tu będzie player</Typography>
+              )}
+              {playerData.url && playerData.type === 'dailymotion' && videoId && (
+                <iframe
+                  src={`https://www.dailymotion.com/embed/video/${videoId}?autoplay=0&mute=0&controls=1&info=0&logo=0&related=0&start=0`}
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  allow="autoplay; fullscreen"
+                  allowFullScreen
+                  style={{ border: 0 }}
+                  title="Dailymotion Player"
+                />
+              )}
+              {playerData.url && playerData.type === 'gdrive' && (
+                <iframe
+                  src={playerData.url.replace('/view', '/preview')}
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  allow="autoplay; fullscreen"
+                  allowFullScreen
+                  style={{ border: 0 }}
+                  title="Google Drive Player"
+                />
+              )}
+              {playerData.url && playerData.type === 'cda' && (
+                <iframe
+                  src={`https://ebd.cda.pl/620x368/${playerData.url.split('/').pop()}`}
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  allow="autoplay; fullscreen"
+                  allowFullScreen
+                  style={{ border: 0 }}
+                  title="CDA Player"
+                />
+              )}
+              {playerData.url && playerData.type === 'mp4upload' && (
+                <iframe
+                  src={playerData.url.replace('mp4upload.com/', 'mp4upload.com/embed-').replace(/\.html$/, '')}
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  allow="autoplay; fullscreen"
+                  allowFullScreen
+                  style={{ border: 0 }}
+                  title="mp4upload Player"
+                />
+              )}
+              {playerData.url && playerData.type === 'mp4' && (
+                <video src={playerData.url} width="100%" height="100%" controls style={{ background: '#000', borderRadius: 8 }} />
+              )}
+              {playerData.url && playerData.type === 'mega' && (
+                <Box sx={{ color: 'white', p: 2, textAlign: 'center' }}>
+                  <b>Odtwarzanie z MEGA nie jest wspierane bezpośrednio w playerze.<br/>Skopiuj link i otwórz w nowej karcie.</b>
+                </Box>
+              )}
+              {playerData.url && playerData.type === 'unknown' && (
+                <Box sx={{ color: 'white', p: 2, textAlign: 'center' }}>
+                  <b>Nieobsługiwany link lub serwis.</b>
+                </Box>
               )}
             </Box>
             {/* Kamerki - tylko jeśli nie tryb kinowy */}
