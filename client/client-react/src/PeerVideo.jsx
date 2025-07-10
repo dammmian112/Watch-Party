@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Box, Typography } from '@mui/material';
 
-function PeerVideo({ stream, userName, cinemaMode = false, style }) {
+function PeerVideo({ stream, userName, cinemaMode = false, width = 300, height = 300, sx }) {
   const videoRef = useRef();
   useEffect(() => {
     if (videoRef.current && stream) {
@@ -16,11 +16,10 @@ function PeerVideo({ stream, userName, cinemaMode = false, style }) {
     borderRadius: cinemaMode ? 4 : 8,
     border: '2px solid #23283a',
     background: '#000',
-    ...style
   };
   
   return (
-    <Box sx={{ width: '100%', height: '100%', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'stretch' }}>
+    <Box sx={{ width, height, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'stretch', ...sx }}>
       <video ref={videoRef} autoPlay playsInline style={videoStyle} />
       <Typography 
         align="center" 
