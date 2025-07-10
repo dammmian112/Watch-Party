@@ -66,8 +66,11 @@ function ResizableCameraBox({ children, defaultHeight = 140, minHeight = 80, max
       userSelect: dragging.current ? 'none' : 'auto',
       transition: dragging.current ? 'none' : 'height 0.2s',
     }}>
-      <Box sx={{ flex: 1, width: '100%', height: '100%' }}>
-        {children}
+      <Box sx={{ flex: 1, width: '100%', height: '100%', display: 'flex', alignItems: 'stretch', justifyContent: 'stretch' }}>
+        {/* Rozciągamy PeerVideo na całość */}
+        {React.cloneElement(children, {
+          style: { width: '100%', height: '100%', objectFit: 'cover' }
+        })}
       </Box>
       {/* Uchwyt do zmiany rozmiaru */}
       <Box
@@ -688,17 +691,6 @@ export default function Room() {
         <IconButton onClick={() => setChatOpen(v => !v)} color="primary" sx={{ mt: 1, bgcolor: 'background.paper', boxShadow: 2, alignSelf: 'flex-end', ...bitcountFont }}>
           <ChatIcon />
         </IconButton>
-      </Box>
-      {/* Debug panel */}
-      <Box sx={{ position: 'fixed', bottom: 0, right: 0, zIndex: 9999, background: '#fff', p: 1, maxWidth: 400, maxHeight: 300, overflow: 'auto', fontSize: 12 }}>
-        <div><b>Peers:</b> {Object.keys(peers).length}</div>
-        {Object.entries(peers).map(([id, stream]) => (
-          <div key={id}>
-            <div>User: {id}</div>
-            <div>Tracks: {stream && stream.getTracks ? stream.getTracks().map(t => t.kind).join(', ') : 'none'}</div>
-          </div>
-        ))}
-        <div><b>LocalStream:</b> {localStream ? localStream.getTracks().map(t => t.kind).join(', ') : 'none'}</div>
       </Box>
     </Box>
   );
