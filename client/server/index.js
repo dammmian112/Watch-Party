@@ -33,7 +33,7 @@ io.on('connection', (socket) => {
       rooms[roomId].push({ id: socket.id, userName });
       
       // Powiadom innych użytkowników o nowym użytkowniku
-      socket.to(roomId).emit('user-joined', socket.id);
+      socket.to(roomId).emit('user-joined', { id: socket.id, userName });
       
       // Wyślij listę użytkowników do wszystkich
       io.to(roomId).emit('users-update', rooms[roomId]);
@@ -86,12 +86,10 @@ io.on('connection', (socket) => {
     for (const roomId of socket.rooms) {
       if (rooms[roomId]) {
         // Powiadom innych użytkowników o opuszczeniu
-        socket.to(roomId).emit('user-left', socket.id);
-        
-        // Zapamiętaj userName przed usunięciem
         const leavingUser = rooms[roomId].find(u => u.id === socket.id);
+        socket.to(roomId).emit('user-left', { id: socket.id, userName: leavingUser ? leavingUser.userName : undefined });
+        // Zapamiętaj userName przed usunięciem
         rooms[roomId] = rooms[roomId].filter(u => u.id !== socket.id);
-        
         // Wyślij aktualizację tylko jeśli użytkownik rzeczywiście istniał
         if (leavingUser) {
           io.to(roomId).emit('users-update', rooms[roomId], leavingUser.userName);

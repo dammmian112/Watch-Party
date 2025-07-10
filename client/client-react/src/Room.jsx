@@ -282,22 +282,20 @@ export default function Room() {
     };
     
     // Handle user join/leave messages
-    const joinHandler = (userId) => {
-      const joiningUser = users.find(u => u.id === userId);
-      if (joiningUser) {
+    const joinHandler = ({ id, userName }) => {
+      if (userName) {
         setMessages(prev => [...prev, {
           userName: 'System',
-          message: `${joiningUser.userName} dołączył do pokoju`
+          message: `${userName} dołączył do pokoju`
         }]);
       }
     };
     
-    const leaveHandler = (userId) => {
-      const leavingUser = users.find(u => u.id === userId);
-      if (leavingUser) {
+    const leaveHandler = ({ id, userName }) => {
+      if (userName) {
         setMessages(prev => [...prev, {
           userName: 'System',
-          message: `${leavingUser.userName} opuścił pokój`
+          message: `${userName} opuścił pokój`
         }]);
       }
     };
