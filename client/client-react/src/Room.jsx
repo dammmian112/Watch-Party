@@ -452,6 +452,7 @@ export default function Room() {
                   boxShadow: 'none',
                   textTransform: 'none',
                   transition: '0.2s',
+                  ...bitcountFont,
                   '&:hover': {
                     bgcolor: '#ffd54f',
                     color: '#181c24',
@@ -535,7 +536,7 @@ export default function Room() {
                 variant="contained"
                 color="secondary"
                 size="medium"
-                sx={{ minWidth: { xs: '100%', sm: 100 }, py: 1, px: 2.5, fontWeight: 700, fontSize: 15, borderRadius: 2, boxShadow: 'none', textTransform: 'none', transition: '0.2s', '&:hover': { bgcolor: '#ffb300', color: '#181c24', boxShadow: 'none' } }}
+                sx={{ minWidth: { xs: '100%', sm: 100 }, py: 1, px: 2.5, fontWeight: 700, fontSize: 15, borderRadius: 2, boxShadow: 'none', textTransform: 'none', transition: '0.2s', ...bitcountFont, '&:hover': { bgcolor: '#ffb300', color: '#181c24', boxShadow: 'none' } }}
               >
                 Idź do minuty
               </Button>
@@ -661,7 +662,7 @@ export default function Room() {
           {!cinemaMode && (
             <>
               <Fade in={chatOpen}>
-                <Paper elevation={6} sx={{ p: 2, borderRadius: 5, bgcolor: 'background.paper', minHeight: 240, height: '100%', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.25)', display: 'flex', flexDirection: 'column', ...bitcountFont }}>
+                <Paper elevation={6} sx={{ p: 2, borderRadius: 5, bgcolor: 'rgba(35,40,58,0.97)', minHeight: 240, height: '100%', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.25)', display: 'flex', flexDirection: 'column', ...bitcountFont }}>
                   <Typography variant="h6" gutterBottom sx={{ color: 'white', letterSpacing: 1, fontWeight: 600, ...bitcountFont, display: 'flex', alignItems: 'center', gap: 1 }}>
                     <ChatIcon sx={{ mr: 0, fontSize: 28, verticalAlign: 'middle' }} />
                     <span style={{ display: 'inline-block', verticalAlign: 'middle', lineHeight: 1 }}>Czat</span>
