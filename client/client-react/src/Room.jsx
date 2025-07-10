@@ -350,7 +350,8 @@ export default function Room() {
         display: 'flex', 
         flexDirection: cinemaMode ? 'row' : { xs: 'column', md: 'row' }, 
         gap: cinemaMode ? 0 : 4, 
-        minHeight: cinemaMode ? '100vh' : 'calc(100vh - 120px)', 
+        height: '100vh',
+        minHeight: 0,
         overflow: cinemaMode ? 'hidden' : 'visible',
         ...bitcountFont 
       }}>
@@ -362,6 +363,8 @@ export default function Room() {
           alignItems: 'center', 
           gap: cinemaMode ? 1 : 3, 
           minWidth: 0, 
+          minHeight: 0,
+          height: '100%',
           ...bitcountFont 
         }}>
           <Paper elevation={6} sx={{ 
@@ -635,10 +638,12 @@ export default function Room() {
           flex: '0 0 340px',
           minWidth: 220,
           maxWidth: 400,
-          height: '100vh',
+          height: '100%',
+          maxHeight: '100%',
+          minHeight: 0,
           overflowY: 'auto',
           bgcolor: 'rgba(24,28,36,0.97)',
-          borderLeft: '2px solid #23283a',
+          borderLeft: { xs: 'none', md: '2px solid #23283a' },
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'stretch',
@@ -665,13 +670,13 @@ export default function Room() {
                 <ChatIcon />
               </IconButton>
               <Fade in={chatOpen}>
-                <Paper elevation={6} sx={{ p: 2, borderRadius: 5, bgcolor: 'rgba(35,40,58,0.97)', minHeight: 240, maxHeight: 'calc(100vh - 120px)', height: '100%', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.25)', display: 'flex', flexDirection: 'column', ...bitcountFont }}>
+                <Paper elevation={6} sx={{ p: 2, borderRadius: 5, bgcolor: 'rgba(35,40,58,0.97)', minHeight: 0, maxHeight: '100%', height: '100%', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.25)', display: 'flex', flexDirection: 'column', overflow: 'auto', ...bitcountFont }}>
                   <Typography variant="h6" gutterBottom sx={{ color: 'white', letterSpacing: 1, fontWeight: 600, ...bitcountFont, display: 'flex', alignItems: 'center', gap: 1 }}>
                     <ChatIcon sx={{ mr: 0, fontSize: 28, verticalAlign: 'middle' }} />
                     <span style={{ display: 'inline-block', verticalAlign: 'middle', lineHeight: 1 }}>Czat</span>
                   </Typography>
                   <Divider sx={{ mb: 2, bgcolor: 'primary.main', opacity: 0.2 }} />
-                  <Box sx={{ flex: 1, overflowY: 'auto', mb: 2, maxHeight: '100%', ...bitcountFont }}>
+                  <Box sx={{ flex: '1 1 0%', minHeight: 0, maxHeight: '100%', height: '100%', overflowY: 'auto', mb: 0, ...bitcountFont }}>
                     {messages.map((msg, i) => (
                       msg.userName === 'System' ? (
                         <Box key={i} sx={{ mb: 1, pl: 1 }}>
